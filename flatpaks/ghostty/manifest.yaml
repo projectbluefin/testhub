@@ -1,0 +1,54 @@
+app-id: com.mitchellh.ghostty
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+default-branch: stable
+command: ghostty
+finish-args:
+  # 3D rendering
+  - --device=dri
+  # use host PTS namespace
+  - --device=all
+  # Windowing
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  # Allow user to specify additional config files in home by default
+  - --filesystem=home:ro
+  # So we can escape the sandbox
+  - --talk-name=org.freedesktop.Flatpak
+cleanup:
+  - /include
+  - /lib/girepository-1.0
+  - /lib/pkgconfig
+  - /share/gir-1.0
+  - /share/pkgconfig
+  - /share/vala
+  - "*.la"
+  - "*.a"
+  - "*.so"
+
+modules:
+  - dependencies.yml
+
+  - name: ghostty
+    buildsystem: simple
+    build-options:
+      append-path: /app/zig
+    build-commands:
+      - zig build
+        -Doptimize=ReleaseFast
+        -Dcpu=baseline
+        -Dflatpak=true
+        -Dstrip=false
+        -fno-sys=oniguruma
+        --prefix /app
+        --search-prefix /app
+        --system $PWD/vendor/p
+    sources:
+      - type: archive
+        url: https://github.com/ghostty-org/ghostty/releases/download/tip/ghostty-source.tar.gz
+        sha256: 4ccc20168cfcf25c682db7c3986c754bc8b74c08783895adbf82ee81dd23cb17
+        strip-components: 1
+
+      - zig-packages.json
