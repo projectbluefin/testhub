@@ -4,3 +4,6 @@
 *.bundle
 *.flatpak
 /tmp/
+
+# Git worktrees (local dev isolation)
+.worktrees
