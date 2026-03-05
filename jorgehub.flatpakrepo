@@ -1,0 +1,5 @@
+[Flatpak Repo]
+Title=jorgehub
+Description=Personal OCI Flatpak repository
+Url=oci+https://castrojo.github.io/jorgehub
+Homepage=https://github.com/castrojo/jorgehub
