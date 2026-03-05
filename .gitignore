@@ -5,5 +5,9 @@
 *.flatpak
 /tmp/
 
+# Large upstream binaries — never commit
+*.deb
+*.AppImage
+
 # Git worktrees (local dev isolation)
 .worktrees
