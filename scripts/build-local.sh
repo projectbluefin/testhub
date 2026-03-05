@@ -61,7 +61,7 @@ podman run --rm \
     "${OCI_DIR}" \
     "${REF}"
 
-echo "==> Pushing to local registry..."
+echo "==> Pushing to local registry (label verification)..."
 skopeo copy \
   --dest-tls-verify=false \
   --digestfile "/tmp/${APP}-digest.txt" \
@@ -69,7 +69,7 @@ skopeo copy \
   "docker://${REGISTRY}/castrojo/jorgehub/${APP}:latest"
 
 DIGEST=$(cat "/tmp/${APP}-digest.txt")
-echo "==> Digest: ${DIGEST}"
+echo "==> Local digest: ${DIGEST}"
 
 echo "==> Inspecting labels..."
 skopeo inspect \
@@ -92,4 +92,42 @@ else:
     print('ERROR: missing required labels — flatpak client will not see this image.')
     sys.exit(1)
 "
-echo "==> Done. Image: ${REGISTRY}/castrojo/jorgehub/${APP}:latest"
+
+echo "==> Loading OCI dir into podman image store..."
+IMAGE_ID=$(podman pull "oci:./${OCI_DIR}" 2>&1 | tail -1)
+echo "==> Image ID: ${IMAGE_ID}"
+
+echo "==> Pushing to ghcr.io with zstd:chunked (podman recompresses)..."
+gh auth token | podman login ghcr.io --username castrojo --password-stdin
+podman push \
+  --compression-format=zstd:chunked \
+  --digestfile "/tmp/${APP}-ghcr-digest.txt" \
+  "${IMAGE_ID}" \
+  "docker://ghcr.io/castrojo/jorgehub/${APP}:latest"
+
+GHCR_DIGEST=$(cat "/tmp/${APP}-ghcr-digest.txt")
+echo "==> ghcr.io digest: ${GHCR_DIGEST}"
+
+echo "==> Verifying zstd:chunked on ghcr.io..."
+skopeo inspect --raw \
+  "docker://ghcr.io/castrojo/jorgehub/${APP}:latest" \
+  | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+layers = d.get('layers', [])
+all_zstd = True
+for i, layer in enumerate(layers):
+    mt = layer.get('mediaType', '')
+    ann = layer.get('annotations', {})
+    chunked = 'io.github.containers.zstd-chunked.manifest' in ann
+    zstd = 'zstd' in mt
+    if not zstd:
+        all_zstd = False
+    print(f'Layer {i}: {mt}  zstd={zstd}  chunked_annotation={chunked}')
+if all_zstd:
+    print('zstd:chunked: VERIFIED')
+else:
+    print('WARNING: not all layers are zstd')
+"
+
+echo "==> Done. Image: ghcr.io/castrojo/jorgehub/${APP}:latest"
