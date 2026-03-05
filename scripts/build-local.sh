@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # build-local.sh — build a flatpak app using the gnome-49 container and push to local registry
+# Usage:
+#   build-local.sh [app]              # build + push to ghcr.io
+#   LOCAL_ONLY=1 build-local.sh [app] # build + local registry only (no ghcr push)
 set -euo pipefail
 
 REGISTRY="localhost:5000"
 APP="${1:-ghostty}"
 MANIFEST="flatpaks/${APP}/manifest.yaml"
 CONTAINER_IMAGE="ghcr.io/flathub-infra/flatpak-github-actions:gnome-49"
+LOCAL_ONLY="${LOCAL_ONLY:-0}"
 
 # Resolve app-id from manifest
 APP_ID=$(python3 -c "
@@ -92,6 +96,12 @@ else:
     print('ERROR: missing required labels — flatpak client will not see this image.')
     sys.exit(1)
 "
+
+if [[ "${LOCAL_ONLY}" == "1" ]]; then
+  echo "==> LOCAL_ONLY mode — skipping ghcr.io push."
+  echo "==> Done. Local image: ${REGISTRY}/castrojo/jorgehub/${APP}:latest @ ${DIGEST}"
+  exit 0
+fi
 
 echo "==> Loading OCI dir into podman image store..."
 IMAGE_ID=$(podman pull "oci:./${OCI_DIR}" 2>&1 | tail -1)

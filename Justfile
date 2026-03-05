@@ -11,6 +11,10 @@ bootstrap:
 build app="ghostty":
     bash scripts/build-local.sh {{app}}
 
+# Loop target: build + local registry only (no ghcr push) — for iterative workflow refinement
+loop app="ghostty":
+    LOCAL_ONLY=1 bash scripts/build-local.sh {{app}}
+
 # Update gh-pages index from latest ghcr.io digest and push
 update-index app="ghostty":
     #!/usr/bin/env bash
