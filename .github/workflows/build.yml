@@ -133,6 +133,7 @@ jobs:
     # When aarch64 is enabled: runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       packages: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
