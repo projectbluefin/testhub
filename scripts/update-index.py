@@ -15,9 +15,14 @@ from pathlib import Path
 
 INDEX_FILE = Path("index/static")
 
+# Only ref and metadata are required — flatpak client needs these to discover and install the app.
+# Size labels are optional; included when present, silently omitted when not.
 REQUIRED_LABELS = [
     "org.flatpak.ref",
     "org.flatpak.metadata",
+]
+
+OPTIONAL_LABELS = [
     "org.flatpak.installed-size",
     "org.flatpak.download-size",
 ]
@@ -67,7 +72,9 @@ def update_index(index, app, repo, digest, inspect_data, tags=None):
         "OS": os_,
         "Architecture": arch,
         "Tags": tags or ["latest"],
-        "Labels": {k: labels[k] for k in REQUIRED_LABELS if k in labels},
+        "Labels": {
+            k: labels[k] for k in REQUIRED_LABELS + OPTIONAL_LABELS if k in labels
+        },
     }
 
     # Find or create result entry for this repo

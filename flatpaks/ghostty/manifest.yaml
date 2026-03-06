@@ -48,7 +48,7 @@ modules:
     sources:
       - type: archive
         url: https://github.com/ghostty-org/ghostty/releases/download/tip/ghostty-source.tar.gz
-        sha256: 4ccc20168cfcf25c682db7c3986c754bc8b74c08783895adbf82ee81dd23cb17
+        sha256: 55b92b6b47a323ca95c019f3dfdb833a9ad8c68a1e96921af5b0fb5665158269
         strip-components: 1
 
       - zig-packages.json

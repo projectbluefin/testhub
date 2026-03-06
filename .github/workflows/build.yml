@@ -1,0 +1,267 @@
+name: Build Flatpak OCI
+
+on:
+  push:
+    paths:
+      - 'flatpaks/**'
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App to build (directory name under flatpaks/)'
+        required: false
+        default: ''
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+# Top-level: deny all. Each job declares only what it needs.
+permissions: {}
+
+jobs:
+
+  # ── Detect which apps changed ──────────────────────────────────────────────
+  detect:
+    runs-on: ubuntu-24.04
+    outputs:
+      apps: ${{ steps.detect.outputs.apps }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed apps
+        id: detect
+        run: |
+          if [[ -n "${{ inputs.app }}" ]]; then
+            echo 'apps=["${{ inputs.app }}"]' >> "$GITHUB_OUTPUT"
+          elif git rev-parse HEAD~1 >/dev/null 2>&1; then
+            APPS=$(git diff --name-only HEAD~1 HEAD -- 'flatpaks/' \
+              | cut -d/ -f2 | sort -u \
+              | jq -Rnc '[inputs | select(length > 0)]')
+            echo "apps=${APPS}" >> "$GITHUB_OUTPUT"
+          else
+            # First commit or shallow clone — treat all flatpak dirs as changed
+            APPS=$(ls -d flatpaks/*/ 2>/dev/null \
+              | xargs -I{} basename {} \
+              | jq -Rnc '[inputs | select(length > 0)]')
+            echo "apps=${APPS}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Build flatpak inside gnome-49 container ────────────────────────────────
+  build:
+    needs: detect
+    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
+    runs-on: ubuntu-24.04
+    # When aarch64 is enabled: runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
+    # and add runner: ubuntu-24.04 (or ubuntu-24.04-arm) to each matrix include entry
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        arch: [x86_64]
+        # aarch64 stub — uncomment when ready to enable QEMU builds:
+        # include:
+        #   - arch: aarch64
+        #     runner: ubuntu-24.04        # QEMU on x86_64 host
+        # Add to "Push to ghcr.io" step when enabling:
+        #   - name: Set up QEMU
+        #     uses: docker/setup-qemu-action@<SHA> # add before build step
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+    # SOURCE_DATE_EPOCH=0: normalises tar timestamps so OCI blob hashes are deterministic
+    # across identical-content builds. build-bundle reads this env directly.
+    env:
+      SOURCE_DATE_EPOCH: "0"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # The v6 action:
+      #   - runs flatpak-builder with --ccache --disable-rofiles-fuse --force-clean
+      #   - caches .flatpak-builder/ via actions/cache
+      #   - cache key: flatpak-builder-${arch}-${manifestHash:0:20}
+      #   - fallback restore key: flatpak-builder-${arch}  (ccache reuse on manifest change)
+      #   - writes OSTree repo to ./repo  (hardcoded localRepoName — NOT .ostree-repo)
+      #   - build-bundle: false → skips bundle step; we export OCI ourselves
+      #   - upload-artifact: false → we upload ourselves (correct artifact name per arch)
+      - name: Build with flatpak-builder (cached)
+        uses: flatpak/flatpak-github-actions/flatpak-builder@92ae9851ad316786193b1fd3f40c4b51eb5cb101 # v6
+        with:
+          manifest-path: flatpaks/${{ matrix.app }}/manifest.yaml
+          build-bundle: false
+          upload-artifact: false
+          cache: true
+          cache-key: flatpak-${{ matrix.app }}-${{ matrix.arch }}
+
+      - name: Export OCI bundle
+        run: |
+          APP_ID=$(python3 -c "
+          import sys
+          for line in open(sys.argv[1]):
+              line = line.strip()
+              if line.startswith('app-id:'):
+                  print(line.split(':', 1)[1].strip())
+                  break
+          " "flatpaks/${{ matrix.app }}/manifest.yaml")
+          [[ -n "${APP_ID}" ]] || { echo "ERROR: could not determine app-id" >&2; exit 1; }
+          REF="app/${APP_ID}/${{ matrix.arch }}/stable"
+          echo "==> Exporting OCI for ${REF}"
+          # OSTree repo is at ./repo (action hardcodes localRepoName='repo')
+          # Do NOT pass --override-source-date-epoch — that flag belongs to flatpak-builder only
+          # SOURCE_DATE_EPOCH=0 env (set at job level) is sufficient for build-bundle
+          flatpak build-bundle --oci repo "${{ matrix.app }}.oci" "${REF}"
+
+      - name: Upload OCI artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: oci-${{ matrix.app }}-${{ matrix.arch }}
+          path: ${{ matrix.app }}.oci/
+          retention-days: 1
+
+  # ── Push OCI to ghcr.io with zstd:chunked ─────────────────────────────────
+  push:
+    needs: [detect, build]
+    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
+    runs-on: ubuntu-24.04
+    # When aarch64 is enabled: runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        arch: [x86_64]
+        # aarch64 stub — see build job comment
+    steps:
+      - uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # v9
+        with:
+          extra-squeeze: "true"
+
+      - name: Download OCI artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: oci-${{ matrix.app }}-${{ matrix.arch }}
+          path: ${{ matrix.app }}.oci
+
+      - name: Push to ghcr.io with zstd:chunked
+        id: push
+        run: |
+          TAG="latest-${{ matrix.arch }}"
+          TARGET="ghcr.io/${{ github.repository }}/${{ matrix.app }}:${TAG}"
+          # --quiet: output image ID only, no progress messages (avoids fragile tail -1 parsing)
+          IMAGE_ID=$(podman pull --quiet "oci:./${{ matrix.app }}.oci")
+          echo "==> Image ID: ${IMAGE_ID}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          podman push \
+            --compression-format=zstd:chunked \
+            --digestfile /tmp/digest.txt \
+            "${IMAGE_ID}" "docker://${TARGET}"
+          DIGEST=$(cat /tmp/digest.txt)
+          echo "==> Pushed ${TARGET} @ ${DIGEST}"
+
+      - name: Login to ghcr.io for skopeo inspect
+        run: |
+          # skopeo does not inherit podman's login session — explicit login required
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            skopeo login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Verify labels on ghcr.io
+        run: |
+          TAG="latest-${{ matrix.arch }}"
+          skopeo inspect \
+            "docker://ghcr.io/${{ github.repository }}/${{ matrix.app }}:${TAG}" \
+            | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          labels = d.get('Labels', {})
+          for k in ['org.flatpak.ref', 'org.flatpak.metadata']:
+              s = 'OK' if k in labels else 'MISSING'
+              print(f'{s}: {k}')
+              if s == 'MISSING': sys.exit(1)
+          print('All required labels present.')
+          "
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: digest-${{ matrix.app }}-${{ matrix.arch }}
+          path: /tmp/digest.txt
+          retention-days: 1
+
+  # ── Update gh-pages index ──────────────────────────────────────────────────
+  update-index:
+    needs: [detect, push]
+    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: read
+    # Serialise gh-pages pushes — prevents race if two workflow runs overlap
+    concurrency:
+      group: gh-pages-update
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          path: main
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: gh-pages
+          path: pages
+
+      - name: Download all digests
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: digest-*
+          path: /tmp/digests
+
+      - name: Login to ghcr.io for skopeo inspect
+        run: |
+          # update-index.py calls skopeo inspect against ghcr.io.
+          # Login required even for public packages to avoid rate limiting and
+          # to handle the window before the package is set public after first push.
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            skopeo login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Update index for each app and arch
+        run: |
+          cd pages
+          APPS='${{ needs.detect.outputs.apps }}'
+          for APP in $(echo "${APPS}" | jq -r '.[]'); do
+            for ARCH in x86_64 aarch64; do
+              DIGEST_FILE="/tmp/digests/digest-${APP}-${ARCH}/digest.txt"
+              if [[ -f "${DIGEST_FILE}" ]]; then
+                DIGEST=$(cat "${DIGEST_FILE}")
+                echo "==> Updating index: ${APP} ${ARCH} ${DIGEST}"
+                python3 ../main/scripts/update-index.py \
+                  --app "${APP}" \
+                  --digest "${DIGEST}" \
+                  --registry ghcr.io \
+                  --repo "${{ github.repository }}/${APP}" \
+                  --tags "latest-${ARCH}"
+              else
+                echo "WARNING: no digest for ${APP}/${ARCH}, skipping"
+              fi
+            done
+          done
+
+      - name: Commit and push index
+        run: |
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index/static
+          if git diff --cached --quiet; then
+            echo "index unchanged, skipping commit"
+          else
+            git commit -m "chore(index): update from build ${{ github.run_number }} [skip ci]"
+            git push
+          fi
