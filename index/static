@@ -25,7 +25,7 @@
       "Name": "castrojo/ghostty",
       "Images": [
         {
-          "Digest": "sha256:7a6c890fe023901990d4cf09ca115654bfcc4c5c19641e82db296f982f28d792",
+          "Digest": "sha256:16ee6154b3638c56feea0fa0de34e7c859c8b883fe6d0df487148eefe9ce4daa",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
