@@ -155,7 +155,7 @@ jobs:
         id: push
         run: |
           TAG="latest-${{ matrix.arch }}"
-          TARGET="ghcr.io/${{ github.repository }}/${{ matrix.app }}:${TAG}"
+          TARGET="ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:${TAG}"
           # --quiet: output image ID only, no progress messages (avoids fragile tail -1 parsing)
           IMAGE_ID=$(podman pull --quiet "oci:./${{ matrix.app }}.oci")
           echo "==> Image ID: ${IMAGE_ID}"
@@ -178,7 +178,7 @@ jobs:
         run: |
           TAG="latest-${{ matrix.arch }}"
           skopeo inspect \
-            "docker://ghcr.io/${{ github.repository }}/${{ matrix.app }}:${TAG}" \
+            "docker://ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:${TAG}" \
             | python3 -c "
           import json, sys
           d = json.load(sys.stdin)
@@ -247,7 +247,7 @@ jobs:
                   --app "${APP}" \
                   --digest "${DIGEST}" \
                   --registry ghcr.io \
-                  --repo "${{ github.repository }}/${APP}" \
+                  --repo "${{ github.repository_owner }}/${APP}" \
                   --tags "latest-${ARCH}"
               else
                 echo "WARNING: no digest for ${APP}/${ARCH}, skipping"
