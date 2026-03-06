@@ -20,6 +20,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "castrojo/ghostty",
+      "Images": [
+        {
+          "Digest": "sha256:ba469af5248f0d34a518316f2e4d88ac5456c7a6c41471b411dcb27f7b6b23a3",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest-x86_64"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/com.mitchellh.ghostty/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=com.mitchellh.ghostty\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=ghostty\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=dri;all;\nfilesystems=home:ro;\n\n[Session Bus Policy]\norg.freedesktop.Flatpak=talk\n\n[Extension com.mitchellh.ghostty.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension com.mitchellh.ghostty.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.mitchellh.ghostty.Locale;com.mitchellh.ghostty.Debug;",
+            "org.flatpak.installed-size": "32001024",
+            "org.flatpak.download-size": "19198061"
+          }
+        }
+      ]
     }
   ]
 }
