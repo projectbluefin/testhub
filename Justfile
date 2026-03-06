@@ -97,34 +97,58 @@ build app="ghostty":
         exit 1
     fi
 
-    # === Common: push to local registry for label verification ===
+    # === Common: load into podman, run chunkah, verify, push ===
+    IMAGE_ID=$(podman pull --quiet "oci:./${OCI_DIR}")
+    echo "==> Single-layer image: ${IMAGE_ID}"
+    echo "==> Running chunkah to split into content-based layers"
+    podman image exists "quay.io/jlebon/chunkah:v0.2.0" || podman pull "quay.io/jlebon/chunkah:v0.2.0"
+    export CHUNKAH_CONFIG_STR
+    CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
+    podman run --rm \
+      --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
+      -e CHUNKAH_CONFIG_STR \
+      quay.io/jlebon/chunkah:v0.2.0 build \
+      > "/tmp/${APP}-chunked.ociarchive"
+    echo "==> Loading chunked OCI archive"
+    CHUNKED_ID=$(podman load < "/tmp/${APP}-chunked.ociarchive" | grep 'Loaded image:' | grep -oP '(?<=sha256:)[a-f0-9]+')
+    echo "==> Chunked image: ${CHUNKED_ID}"
+    # Verify labels survived chunkah
+    podman inspect "${CHUNKED_ID}" \
+      | jq -e '.[0].Config.Labels["org.flatpak.ref"] // error("MISSING: org.flatpak.ref")' \
+      > /dev/null && echo "==> Flatpak labels OK"
+    LAYER_COUNT=$(podman inspect "${CHUNKED_ID}" | jq '.[0].RootFS.Layers | length')
+    echo "==> Layer count after chunkah: ${LAYER_COUNT}"
+    # Push to local registry for label verification
     skopeo copy --dest-tls-verify=false \
-      --digestfile "/tmp/${APP}-digest.txt" \
-      "oci:./${OCI_DIR}" \
-      "docker://{{local_registry}}/castrojo/jorgehub/${APP}:latest"
-    DIGEST=$(cat "/tmp/${APP}-digest.txt")
-    echo "==> Local digest: ${DIGEST}"
+      --digestfile "/tmp/${APP}-local-digest.txt" \
+      "containers-storage:${CHUNKED_ID}" \
+      "docker://localhost:5000/castrojo/jorgehub/${APP}:latest"
+    LOCAL_DIGEST=$(cat "/tmp/${APP}-local-digest.txt")
+    echo "==> Local digest: ${LOCAL_DIGEST}"
     skopeo inspect --tls-verify=false \
-      "docker://{{local_registry}}/castrojo/jorgehub/${APP}@${DIGEST}" \
+      "docker://localhost:5000/castrojo/jorgehub/${APP}@${LOCAL_DIGEST}" \
       | jq -e '
         .Labels["org.flatpak.ref"] // error("MISSING: org.flatpak.ref"),
         .Labels["org.flatpak.metadata"] // error("MISSING: org.flatpak.metadata")
         | "OK: " + (if type == "string" then "present" else "present" end)
       ' > /dev/null \
-      && echo "All required labels present." \
-      || { echo "ERROR: required labels missing" >&2; exit 1; }
-    # Load OCI into podman image store (--quiet: output image ID only, no progress noise)
-    IMAGE_ID=$(podman pull --quiet "oci:./${OCI_DIR}")
-    echo "==> Image ID: ${IMAGE_ID}"
+      && echo "All required labels present."
+    # Push to ghcr.io with zstd:chunked
     gh auth token | podman login ghcr.io --username castrojo --password-stdin
     podman push --compression-format=zstd:chunked \
       --digestfile "/tmp/${APP}-ghcr-digest.txt" \
-      "${IMAGE_ID}" "docker://ghcr.io/castrojo/${APP}:latest-${ARCH}"
+      "${CHUNKED_ID}" "docker://ghcr.io/castrojo/${APP}:latest-${ARCH}"
     GHCR_DIGEST=$(cat "/tmp/${APP}-ghcr-digest.txt")
     echo "==> ghcr.io digest: ${GHCR_DIGEST}"
-    # Verify zstd:chunked
-    skopeo inspect --raw "docker://ghcr.io/castrojo/${APP}:latest-${ARCH}" \
-      | jq -r '.layers[] | "Layer: \(.mediaType)  zstd=\(.mediaType | contains("zstd"))  chunked=\(.annotations["io.github.containers.zstd-chunked.manifest"] != null)"'
+    # Verify ALL layers are zstd:chunked — fail if any are not
+    LAYER_RESULTS=$(skopeo inspect --raw "docker://ghcr.io/castrojo/${APP}:latest-${ARCH}" \
+      | jq -r '.layers[] | "Layer \(.digest[:19]): mediaType=\(.mediaType) chunked=\((.annotations // {}) | has("io.github.containers.zstd-chunked.manifest-checksum"))"')
+    echo "${LAYER_RESULTS}"
+    if echo "${LAYER_RESULTS}" | grep -q "chunked=false"; then
+      echo "ERROR: one or more layers missing zstd:chunked annotation" >&2
+      exit 1
+    fi
+    echo "==> All ${LAYER_COUNT} layers are zstd:chunked"
     echo "==> Done. ghcr.io/castrojo/${APP}:latest-${ARCH} @ ${GHCR_DIGEST}"
 
 # Loop: build + local registry only (no ghcr push) — dev iteration target
@@ -218,22 +242,54 @@ loop app="ghostty":
         exit 1
     fi
 
+    # === Common: chunkah rechunk → local registry ===
+    # 1. Load OCI dir into podman image store
+    IMAGE_ID=$(podman pull --quiet "oci:./${OCI_DIR}")
+    echo "==> Loaded image: ${IMAGE_ID}"
+
+    # 2. Ensure chunkah image is cached
+    podman image exists "quay.io/jlebon/chunkah:v0.2.0" || podman pull "quay.io/jlebon/chunkah:v0.2.0"
+
+    # 3. Capture container config for chunkah (export before assign for set -euo pipefail)
+    export CHUNKAH_CONFIG_STR
+    CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
+
+    # 4. Run chunkah via image-mount — outputs uncompressed OCI archive to stdout
+    podman run --rm \
+      --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
+      -e CHUNKAH_CONFIG_STR \
+      quay.io/jlebon/chunkah:v0.2.0 build \
+      > "/tmp/${APP}-chunked.ociarchive"
+
+    # 5. Load chunked archive — anchor grep to "Loaded image:" line (not blob sha)
+    CHUNKED_ID=$(podman load < "/tmp/${APP}-chunked.ociarchive" | grep 'Loaded image:' | grep -oP '(?<=sha256:)[a-f0-9]+')
+    echo "==> Chunked image: sha256:${CHUNKED_ID}"
+
+    # 6. Verify labels survived chunkah round-trip
+    podman inspect "${CHUNKED_ID}" \
+      | jq -e '.[0].Config.Labels["org.flatpak.ref"] // error("MISSING: org.flatpak.ref")' \
+      > /dev/null && echo "==> Labels OK"
+
+    # 7. Report layer count
+    LAYER_COUNT=$(podman inspect "${CHUNKED_ID}" | jq '.[0].RootFS.Layers | length')
+    echo "==> Layer count: ${LAYER_COUNT}"
+
+    # 8. Push chunked image to local registry
     skopeo copy --dest-tls-verify=false \
       --digestfile "/tmp/${APP}-digest.txt" \
-      "oci:./${OCI_DIR}" \
+      "containers-storage:${CHUNKED_ID}" \
       "docker://{{local_registry}}/castrojo/jorgehub/${APP}:latest"
+
+    # 9. Verify labels in local registry
     DIGEST=$(cat "/tmp/${APP}-digest.txt")
-    echo "==> Local digest: ${DIGEST}"
     skopeo inspect --tls-verify=false \
       "docker://{{local_registry}}/castrojo/jorgehub/${APP}@${DIGEST}" \
       | jq -e '
         .Labels["org.flatpak.ref"] // error("MISSING: org.flatpak.ref"),
         .Labels["org.flatpak.metadata"] // error("MISSING: org.flatpak.metadata")
         | "OK: present"
-      ' > /dev/null \
-      && echo "All required labels present." \
-      || { echo "ERROR: required labels missing" >&2; exit 1; }
-    echo "==> LOCAL_ONLY done. ${DIGEST}"
+      ' > /dev/null && echo "All required labels present."
+    echo "==> LOCAL_ONLY done. ${DIGEST} — layers: ${LAYER_COUNT}"
 
 # Update gh-pages index from latest ghcr.io digest and push
 update-index app="ghostty":

@@ -233,22 +233,55 @@ jobs:
           name: oci-${{ matrix.app }}-${{ matrix.arch }}
           path: ${{ matrix.app }}.oci
 
+      - name: Split layers with chunkah
+        env:
+          APP: ${{ matrix.app }}
+          CHUNKAH_IMAGE: quay.io/jlebon/chunkah:v0.2.0
+        run: |
+          # Load single-layer OCI into podman image store
+          # --quiet: image ID only, no progress noise
+          IMAGE_ID=$(podman pull --quiet "oci:./${APP}.oci")
+          echo "==> Single-layer image: ${IMAGE_ID}"
+          podman pull "${CHUNKAH_IMAGE}"
+          # Preserve image config (labels etc.) across chunkah round-trip
+          export CHUNKAH_CONFIG_STR
+          CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
+          echo "==> Running chunkah to split into content-based layers"
+          podman run --rm \
+            --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
+            -e CHUNKAH_CONFIG_STR \
+            "${CHUNKAH_IMAGE}" build \
+            > /tmp/${APP}-chunked.ociarchive
+          CHUNKED_ID=$(podman load < /tmp/${APP}-chunked.ociarchive \
+            | grep 'Loaded image:' | grep -oP '(?<=sha256:)[a-f0-9]+')
+          echo "==> Chunked image: ${CHUNKED_ID}"
+          # Verify labels survived the round-trip
+          podman inspect "${CHUNKED_ID}" \
+            | jq -e '.[0].Config.Labels["org.flatpak.ref"] // error("MISSING: org.flatpak.ref")' \
+            > /dev/null
+          echo "==> Flatpak labels OK"
+          LAYER_COUNT=$(podman inspect "${CHUNKED_ID}" | jq '.[0].RootFS.Layers | length')
+          echo "==> Layer count: ${LAYER_COUNT}"
+          [[ "${LAYER_COUNT}" -gt 1 ]] \
+            && echo "==> chunkah split succeeded" \
+            || echo "==> WARNING: chunkah produced only 1 layer"
+          # Export for use in subsequent steps
+          echo "CHUNKED_ID=${CHUNKED_ID}" >> "$GITHUB_ENV"
+          echo "LAYER_COUNT=${LAYER_COUNT}" >> "$GITHUB_ENV"
+
       - name: Push to ghcr.io with zstd:chunked
         id: push
         run: |
           TAG="latest-${{ matrix.arch }}"
           TARGET="ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:${TAG}"
-          # --quiet: output image ID only, no progress messages (avoids fragile tail -1 parsing)
-          IMAGE_ID=$(podman pull --quiet "oci:./${{ matrix.app }}.oci")
-          echo "==> Image ID: ${IMAGE_ID}"
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           podman push \
             --compression-format=zstd:chunked \
             --digestfile /tmp/digest.txt \
-            "${IMAGE_ID}" "docker://${TARGET}"
+            "${CHUNKED_ID}" "docker://${TARGET}"
           DIGEST=$(cat /tmp/digest.txt)
-          echo "==> Pushed ${TARGET} @ ${DIGEST}"
+          echo "==> Pushed ${TARGET} @ ${DIGEST} — layers: ${LAYER_COUNT}"
 
       - name: Login to ghcr.io for skopeo inspect
         run: |
@@ -271,6 +304,17 @@ jobs:
               if s == 'MISSING': sys.exit(1)
           print('All required labels present.')
           "
+
+      - name: Verify all layers are zstd:chunked
+        run: |
+          TAG="latest-${{ matrix.arch }}"
+          RESULTS=$(skopeo inspect --raw \
+            "docker://ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:${TAG}" \
+            | jq -r '.layers[] | "Layer \(.digest[:19]): chunked=\((.annotations // {}) | has("io.github.containers.zstd-chunked.manifest-checksum"))"')
+          echo "${RESULTS}"
+          echo "${RESULTS}" | grep -q "chunked=false" \
+            && { echo "ERROR: one or more layers missing zstd:chunked annotation" >&2; exit 1; } \
+            || echo "==> All ${LAYER_COUNT} layers are zstd:chunked"
 
       - name: Upload digest artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
