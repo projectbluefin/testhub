@@ -25,12 +25,12 @@
       "Name": "castrojo/ghostty",
       "Images": [
         {
-          "Digest": "sha256:16ee6154b3638c56feea0fa0de34e7c859c8b883fe6d0df487148eefe9ce4daa",
+          "Digest": "sha256:6d279305bb0cc821eb758da9085274696278fa5655ff9c2a853b136916c46cba",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
           "Tags": [
-            "latest-x86_64"
+            "latest"
           ],
           "Labels": {
             "org.flatpak.ref": "app/com.mitchellh.ghostty/x86_64/stable",
