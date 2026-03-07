@@ -1,0 +1,80 @@
+name: Cleanup — Delete Package Versions
+
+# One-time / on-demand workflow to delete named tags and untagged versions
+# from a ghcr.io package.
+#
+# Example: delete existing per-arch tags and ghost versions for goose:
+#   gh workflow run cleanup.yml \
+#     -f app=goose \
+#     -f tags="latest-x86_64 v1.27.1-x86_64 v1.26.2-x86_64 v1.25.3-x86_64" \
+#     -f delete_untagged=true
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Package name (e.g. goose)'
+        required: true
+      tags:
+        description: 'Space-separated list of tags to delete (e.g. "latest-x86_64 v1.27.1-x86_64")'
+        required: false
+        default: ''
+      delete_untagged:
+        description: 'Also delete all untagged versions (true/false)'
+        required: false
+        default: 'false'
+
+permissions: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    steps:
+      - name: Delete named tags
+        if: inputs.tags != ''
+        run: |
+          APP="${{ inputs.app }}"
+          for TAG in ${{ inputs.tags }}; do
+            VERSION_ID=$(gh api "/user/packages/container/${APP}/versions" \
+              --jq --arg tag "${TAG}" \
+              '.[] | select(.metadata.container.tags[] == $tag) | .id' \
+              || true)
+            if [[ -n "${VERSION_ID}" ]]; then
+              gh api --method DELETE "/user/packages/container/${APP}/versions/${VERSION_ID}"
+              echo "==> Deleted tag ${TAG} (version ID ${VERSION_ID})"
+            else
+              echo "==> Tag ${TAG} not found — skipping"
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete untagged versions
+        if: inputs.delete_untagged == 'true'
+        run: |
+          APP="${{ inputs.app }}"
+          # Fetch all versions with empty tags array, delete each
+          VERSION_IDS=$(gh api "/user/packages/container/${APP}/versions" \
+            --jq '[.[] | select(.metadata.container.tags == []) | .id] | .[]' \
+            || true)
+          if [[ -z "${VERSION_IDS}" ]]; then
+            echo "==> No untagged versions found"
+          else
+            while IFS= read -r VERSION_ID; do
+              gh api --method DELETE "/user/packages/container/${APP}/versions/${VERSION_ID}"
+              echo "==> Deleted untagged version ID ${VERSION_ID}"
+            done <<< "${VERSION_IDS}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify remaining tags
+        run: |
+          APP="${{ inputs.app }}"
+          echo "==> Remaining versions in ${APP}:"
+          gh api "/user/packages/container/${APP}/versions" \
+            --jq '.[] | {id, tags: .metadata.container.tags}'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
