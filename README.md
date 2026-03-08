@@ -24,10 +24,18 @@ This potentially unlocks all container registries and git forges as Flatpak host
 
     flatpak remote-add --if-not-exists jorgehub oci+https://castrojo.github.io/jorgehub
 
-### Install Ghostty
+### Install packages
+
+| Package | App ID | Description |
+|---|---|---|
+| Ghostty | `com.mitchellh.ghostty` | GPU-accelerated terminal emulator |
+| Goose | `io.github.block.Goose` | Goose AI agent |
+| Firefox Nightly | `org.mozilla.firefox` | Firefox Nightly browser |
 
     flatpak install jorgehub com.mitchellh.ghostty
+    flatpak install jorgehub io.github.block.Goose
+    flatpak install jorgehub org.mozilla.firefox
 
-### Update Ghostty
+### Update all
 
-    flatpak update com.mitchellh.ghostty
+    flatpak update
