@@ -102,7 +102,8 @@ build app="ghostty":
         echo "==> mode: flatpak-builder (manifest.yaml)"
         APP_ID=$(yq '.app-id' "${MANIFEST}")
         [[ -n "${APP_ID}" ]] || { echo "ERROR: could not determine app-id from ${MANIFEST}" >&2; exit 1; }
-        REF="app/${APP_ID}/${ARCH}/stable"
+        BRANCH=$(yq '.default-branch // "stable"' "${MANIFEST}")
+        REF="app/${APP_ID}/${ARCH}/${BRANCH}"
         echo "==> Building ${REF}"
         echo "==> mode: full (ghcr.io push)"
         podman image exists "{{container_image}}" || podman pull "{{container_image}}"
@@ -267,7 +268,8 @@ loop app="ghostty":
         echo "==> mode: flatpak-builder LOCAL_ONLY"
         APP_ID=$(yq '.app-id' "${MANIFEST}")
         [[ -n "${APP_ID}" ]] || { echo "ERROR: could not determine app-id from ${MANIFEST}" >&2; exit 1; }
-        REF="app/${APP_ID}/${ARCH}/stable"
+        BRANCH=$(yq '.default-branch // "stable"' "${MANIFEST}")
+        REF="app/${APP_ID}/${ARCH}/${BRANCH}"
         echo "==> Building ${REF}"
         podman image exists "{{container_image}}" || podman pull "{{container_image}}"
         podman run --rm --privileged \
@@ -277,7 +279,6 @@ loop app="ghostty":
           flatpak-builder \
             --disable-rofiles-fuse --force-clean \
             --override-source-date-epoch=0 \
-            --disable-download \
             --repo=.ostree-repo \
             .build-dir "${MANIFEST}"
         rm -rf "${OCI_DIR}"

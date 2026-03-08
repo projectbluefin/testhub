@@ -1,0 +1,121 @@
+app-id: org.mozilla.firefox
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+base: org.mozilla.firefox.BaseApp
+base-version: "24.08"
+default-branch: nightly
+command: firefox
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --socket=fallback-x11
+  - --socket=pcsc
+  - --socket=cups
+  - --device=all
+  - --allow=devel
+  - --filesystem=xdg-config/gtk-3.0:ro
+  - --filesystem=xdg-download
+  - --filesystem=/run/.heim_org.h5l.kcm-socket
+  - --filesystem=xdg-run/speech-dispatcher:ro
+  - --persist=.mozilla
+  - --own-name=org.mozilla.firefox_beta.*
+  - --own-name=org.mozilla.firefox.*
+  - --own-name=org.mpris.MediaPlayer2.firefox.*
+  - --talk-name=org.gtk.vfs.*
+  - --talk-name=org.a11y.Bus
+  - --talk-name=org.freedesktop.FileManager1
+  - --talk-name=org.mpris.MediaPlayer2.firefox.*
+  - --system-talk-name=org.freedesktop.NetworkManager
+  - --env=DICPATH=/usr/share/hunspell
+
+add-extensions:
+  org.freedesktop.Platform.ffmpeg-full:
+    directory: lib/ffmpeg
+    version: "24.08"
+    add-ld-path: .
+  org.mozilla.firefox.Locale:
+    directory: share/runtime/langpack
+    version: nightly
+    subdirectories: true
+    no-autodownload: true
+  org.mozilla.firefox.systemconfig:
+    directory: etc/firefox
+    version: nightly
+    no-autodownload: true
+
+modules:
+  - name: firefox
+    buildsystem: simple
+    build-commands:
+      - install -d /app/lib/firefox
+      - cp -r firefox/. /app/lib/firefox/
+      - install -D -m 755 firefox.sh /app/bin/firefox
+      - install -D -m 644 org.mozilla.firefox.desktop /app/share/applications/org.mozilla.firefox.desktop
+      - install -D -m 644 org.mozilla.firefox.appdata.xml /app/share/metainfo/org.mozilla.firefox.appdata.xml
+      - install -D -m 644 icons/16.png /app/share/icons/hicolor/16x16/apps/org.mozilla.firefox.png
+      - install -D -m 644 icons/32.png /app/share/icons/hicolor/32x32/apps/org.mozilla.firefox.png
+      - install -D -m 644 icons/48.png /app/share/icons/hicolor/48x48/apps/org.mozilla.firefox.png
+      - install -D -m 644 icons/64.png /app/share/icons/hicolor/64x64/apps/org.mozilla.firefox.png
+      - install -D -m 644 icons/128.png /app/share/icons/hicolor/128x128/apps/org.mozilla.firefox.png
+      - install -D -m 644 icons/256.png /app/share/icons/hicolor/256x256/apps/org.mozilla.firefox.png
+      - install -D -m 644 icons/symbolic.svg /app/share/icons/hicolor/symbolic/apps/org.mozilla.firefox-symbolic.svg
+    cleanup-commands:
+      - mkdir -p ${FLATPAK_DEST}/lib/ffmpeg
+      - mkdir -p ${FLATPAK_DEST}/etc/firefox
+      - mkdir -p ${FLATPAK_DEST}/share/runtime/langpack
+    sources:
+      - type: archive
+        url: https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-central/firefox-150.0a1.en-US.linux-x86_64.tar.xz
+        sha256: b2d5a9c72652e46e693a511f392f3b697de96f71c4b21ad4dd3febce0c87fcf8
+        strip-components: 0
+        only-arches:
+          - x86_64
+      - type: script
+        dest-filename: firefox.sh
+        commands:
+          - export TMPDIR=$XDG_CACHE_HOME/tmp
+          - exec /app/lib/firefox/firefox --name org.mozilla.firefox "$@"
+      - type: file
+        path: org.mozilla.firefox.desktop
+      - type: file
+        path: org.mozilla.firefox.appdata.xml
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default16.png
+        sha256: 28a8bac75a9dec5069d4a3928ac4664d351d32b911a5f0e57201ba0118bef35e
+        dest: icons
+        dest-filename: 16.png
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default32.png
+        sha256: ff812f4183820bb9c1934256c52289f0fbd8922ff0eb374d029508617ccd2a9b
+        dest: icons
+        dest-filename: 32.png
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default48.png
+        sha256: f63b83a8e0dc92e1cd0be34313a7f512a8771ff6804f6f5d4a1199ef4dd48b30
+        dest: icons
+        dest-filename: 48.png
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default64.png
+        sha256: ec6cab8da49bd049b4558978348702a7addc218c6ecd3826a8b944e10d2f0878
+        dest: icons
+        dest-filename: 64.png
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default128.png
+        sha256: 4c67676caa243775f91f6b4a5d2bcf8b106b7c7556c154da29481e723a804d5d
+        dest: icons
+        dest-filename: 128.png
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default256.png
+        sha256: 86dac8b6794d2bd3806af4d2cfee9a2eb2fbc05dca77eb599f5ba899d7edabdd
+        dest: icons
+        dest-filename: 256.png
+      - type: file
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/content/about-logo.svg
+        sha256: 1bc3bb02384b61941ceedd4afae930e25efe288a404604c4b2c2aed6962663bb
+        dest: icons
+        dest-filename: symbolic.svg

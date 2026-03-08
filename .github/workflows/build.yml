@@ -103,6 +103,13 @@ jobs:
       #   - writes OSTree repo to ./repo  (hardcoded localRepoName — NOT .ostree-repo)
       #   - build-bundle: false → skips bundle step; we export OCI ourselves
       #   - upload-artifact: false → we upload ourselves (correct artifact name per arch)
+      - name: Read manifest branch (flatpak-builder path)
+        id: manifest-meta
+        if: steps.detect-path.outputs.mode == 'flatpak-builder'
+        run: |
+          BRANCH=$(yq '.default-branch // "stable"' "flatpaks/${{ matrix.app }}/manifest.yaml")
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
       - name: Build with flatpak-builder (cached)
         if: steps.detect-path.outputs.mode == 'flatpak-builder'
         uses: flatpak/flatpak-github-actions/flatpak-builder@92ae9851ad316786193b1fd3f40c4b51eb5cb101 # v6
@@ -112,19 +119,20 @@ jobs:
           upload-artifact: false
           cache: true
           cache-key: flatpak-${{ matrix.app }}-${{ matrix.arch }}
-          branch: stable
+          branch: ${{ steps.manifest-meta.outputs.branch }}
 
       - name: Export OCI bundle (flatpak-builder path)
         if: steps.detect-path.outputs.mode == 'flatpak-builder'
         run: |
           APP_ID=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('flatpaks/${{ matrix.app }}/manifest.yaml')); print(d['app-id'])")
           [[ -n "${APP_ID}" && "${APP_ID}" != "null" ]] || { echo "ERROR: could not determine app-id" >&2; exit 1; }
-          echo "==> Exporting OCI for ${APP_ID} (arch: ${{ matrix.arch }}, branch: stable)"
+          BRANCH="${{ steps.manifest-meta.outputs.branch }}"
+          echo "==> Exporting OCI for ${APP_ID} (arch: ${{ matrix.arch }}, branch: ${BRANCH})"
           # OSTree repo is at ./repo (action hardcodes localRepoName='repo')
-          # NAME = app-id only (not a full ref path); BRANCH = stable; --arch sets target arch
+          # NAME = app-id only (not a full ref path); BRANCH from manifest default-branch; --arch sets target arch
           # Do NOT pass --override-source-date-epoch — that flag belongs to flatpak-builder only
           # SOURCE_DATE_EPOCH=0 env (set at job level) is sufficient for build-bundle
-          flatpak build-bundle --oci --arch="${{ matrix.arch }}" repo "${{ matrix.app }}.oci" "${APP_ID}" stable
+          flatpak build-bundle --oci --arch="${{ matrix.arch }}" repo "${{ matrix.app }}.oci" "${APP_ID}" "${BRANCH}"
 
       # ── Bundle repack path (e.g. goose) ──────────────────────────────────
       # Downloads upstream .flatpak, verifies sha256, imports into OSTree, exports OCI.
