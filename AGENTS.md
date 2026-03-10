@@ -91,6 +91,16 @@ Rules:
   flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed digest
   ```
   The loop is not complete until `flatpak install` succeeds and `flatpak info` shows the correct digest.
+- **Source URL convention for manifest.yaml apps:** Always use immutable versioned tag archive URLs
+  (e.g. `https://github.com/ghostty-org/ghostty/archive/refs/tags/v1.3.0.tar.gz`). Never use
+  rolling `tip`, `latest`, or branch archive URLs — the tarball content and sha256 change without
+  notice, causing non-deterministic build failures. When upgrading, find the exact tag URL and
+  update sha256 in the same commit.
+- **gh-pages worktree: always fetch before committing.** Before any `git add` in the gh-pages
+  worktree, run `git fetch origin gh-pages && git rebase origin/gh-pages`. Committing after a
+  stash-pop onto a diverged remote and then rebasing causes git to treat JSON content as plain
+  text and merge both versions — the result is duplicate entries in `index/static` JSON files.
+  Always manually verify dedup after any rebase of index/static changes.
 
 ## Simplicity Rule
 
