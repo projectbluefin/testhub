@@ -48,8 +48,8 @@ modules:
         --system $PWD/vendor/p
     sources:
       - type: archive
-        url: https://codeload.github.com/ghostty-org/ghostty/tar.gz/refs/tags/v1.3.0
-        sha256: 3d05cbdb712ec19ecdc720a2757a09ebf79aaa8d90ae2ae5c0ddd5536ef31be6
+        url: https://github.com/ghostty-org/ghostty/releases/download/tip/ghostty-source.tar.gz
+        sha256: ecb68aa7179a82f7bac207f983b1e54cdb2905a3b3c19b6bfe4e8d1c8816862b
         strip-components: 1
 
       - zig-packages.json
