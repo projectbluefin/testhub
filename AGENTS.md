@@ -102,7 +102,7 @@ Specifically:
 stop and ask the user first.** This repo is intentionally minimal. The right default is
 "don't add it" unless there's no alternative.
 
-## Plans Reference
+## Architecture Reference
 
-> Architecture, pipeline decisions, workflow test findings:
-> `~/.config/opencode/plans/jorgehub/`
+> Architecture, pipeline decisions, and workflow test findings are stored in the
+> workflow-state DB. Search with: `journal_search(text: "jorgehub", limit: 10)`

@@ -1,0 +1,17 @@
+{
+  "name": "jorgehub",
+  "image": "ghcr.io/bootc-dev/devenv-debian:latest",
+  "runArgs": [
+    "--security-opt", "label=disable",
+    "--security-opt", "unmask=/proc/*",
+    "--device", "/dev/net/tun",
+    "--device", "/dev/kvm"
+  ],
+  "capAdd": ["SYS_ADMIN"],
+  "postCreateCommand": {
+    "devenv-init": "sudo /usr/local/bin/devenv-init.sh"
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/usr/local/cargo/bin"
+  }
+}
