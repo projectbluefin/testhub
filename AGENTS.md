@@ -82,6 +82,15 @@ Rules:
 - chunkah pin: `quay.io/jlebon/chunkah:v0.2.0` (pre-production — update when stable release ships)
 - chunkah layer count for goose (~200MB): ~30 layers from OSTree object store heuristics alone;
   xattr-based component hints deferred until repo has 3+ packages (see journal 20260306-184501-301)
+- **Flatpak install validation is mandatory after any OCI push (loop or build).** CI green is not
+  sufficient — two flatpaks were 404 on client PCs due to wrong OCI labels/index even when CI
+  passed. After `just loop <app>` or `just build <app>`, run inside a devaipod container:
+  ```bash
+  flatpak remote-add --user --if-not-exists jorgehub ~/src/jorgehub/jorgehub.flatpakrepo
+  flatpak install --user --noninteractive jorgehub <app-id>
+  flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed digest
+  ```
+  The loop is not complete until `flatpak install` succeeds and `flatpak info` shows the correct digest.
 
 ## Simplicity Rule
 
