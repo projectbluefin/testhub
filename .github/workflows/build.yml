@@ -510,15 +510,17 @@ jobs:
             git push
           fi
 
-  # ── Retag content manifests, delete staging tags, set package description ──
-  # Runs after update-index so skopeo inspect in update-index.py can still
-  # reference the staging tag.
+  # ── Set package description ───────────────────────────────────────────────
+  # Runs after update-index.
   #
-  # IMPORTANT: ghcr.io permanently deletes a manifest's blobs when its version
-  # is deleted. An OCI image index references the content manifest by digest —
-  # if the content manifest version is deleted, the index becomes broken
-  # ("manifest unknown"). To prevent this, we first retag the content manifest
-  # as "content-<digest_short>" before deleting the staging tag version.
+  # NOTE: Staging tags (sha-<sha>-<arch>) are intentionally NOT deleted.
+  # ghcr.io permanently deletes manifest blobs when a version is deleted —
+  # skopeo copy within the same registry creates only a tag alias, not an
+  # independent copy. Deleting the staging tag version kills the content
+  # manifest that the OCI image index references by digest, breaking
+  # flatpak install with "manifest unknown". Staging tags accumulate (one
+  # per build per arch) and are cleaned up manually via the cleanup.yml
+  # workflow when needed.
   cleanup:
     needs: [detect, update-index]
     if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
@@ -533,59 +535,6 @@ jobs:
         arch: [x86_64]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Download staging tag artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: staging-tag-${{ matrix.app }}-${{ matrix.arch }}
-          path: /tmp/staging-tags
-
-      - name: Login to ghcr.io for skopeo
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            skopeo login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
-
-      - name: Retag content manifest and delete staging tag
-        run: |
-          APP="${{ matrix.app }}"
-          OWNER="${{ github.repository_owner }}"
-          STAGING_TAG=$(cat /tmp/staging-tags/staging-tag.txt)
-          [[ -n "${STAGING_TAG}" ]] || { echo "ERROR: staging-tag.txt is empty" >&2; exit 1; }
-          # ghcr.io permanently deletes a manifest when its version is deleted.
-          # OCI image indexes reference content manifests by digest — if the content
-          # manifest version is deleted, the index breaks ("manifest unknown").
-          # Fix: retag content manifest as "content-<digest_short>" before deletion,
-          # so the manifest stays alive under a permanent non-user-facing tag.
-          DIGEST=$(gh api "/user/packages/container/${APP}/versions" \
-            --jq ".[] | select(.metadata.container.tags[] == \"${STAGING_TAG}\") | .name" \
-            || true)
-          if [[ -n "${DIGEST}" ]]; then
-            DIGEST_SHORT="${DIGEST:7:12}"
-            CONTENT_TAG="content-${DIGEST_SHORT}"
-            skopeo copy \
-              "docker://ghcr.io/${OWNER}/${APP}@${DIGEST}" \
-              "docker://ghcr.io/${OWNER}/${APP}:${CONTENT_TAG}"
-            echo "==> Retagged content manifest ${DIGEST} as ${CONTENT_TAG}"
-          else
-            echo "WARNING: staging tag ${STAGING_TAG} not found — skipping retag"
-          fi
-          # Now safe to delete the staging tag version
-          VERSION_ID=$(gh api "/user/packages/container/${APP}/versions" \
-            --jq ".[] | select(.metadata.container.tags[] == \"${STAGING_TAG}\") | .id" \
-            || true)
-          MATCH_COUNT=$(echo "${VERSION_ID}" | grep -c . || true)
-          if [[ "${MATCH_COUNT}" -gt 1 ]]; then
-            echo "ERROR: multiple versions matched staging tag ${STAGING_TAG} — manual cleanup required" >&2
-            exit 1
-          fi
-          if [[ -n "${VERSION_ID}" ]]; then
-            gh api --method DELETE "/user/packages/container/${APP}/versions/${VERSION_ID}"
-            echo "==> Deleted staging tag ${STAGING_TAG} (version ID ${VERSION_ID})"
-          else
-            echo "WARNING: staging tag ${STAGING_TAG} not found — may already be deleted"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set package description
         run: |
