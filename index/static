@@ -2,66 +2,6 @@
   "Registry": "https://ghcr.io",
   "Results": [
     {
-      "Name": "castrojo/ghostty",
-      "Images": [
-        {
-          "Digest": "sha256:bd67b001e110bf8b714db60065a3d3e300b6d5e7ecded61b1e55a90c366413ed",
-          "MediaType": "application/vnd.oci.image.manifest.v1+json",
-          "OS": "linux",
-          "Architecture": "amd64",
-          "Tags": [
-            "latest"
-          ],
-          "Labels": {
-            "org.flatpak.ref": "app/com.mitchellh.ghostty/x86_64/stable",
-            "org.flatpak.metadata": "[Application]\nname=com.mitchellh.ghostty\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=ghostty\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=dri;all;\nfilesystems=home:ro;\n\n[Session Bus Policy]\norg.freedesktop.Flatpak=talk\n\n[Extension com.mitchellh.ghostty.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension com.mitchellh.ghostty.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.mitchellh.ghostty.Locale;com.mitchellh.ghostty.Debug;",
-            "org.flatpak.installed-size": "32004096",
-            "org.flatpak.download-size": "19199604"
-          }
-        }
-      ]
-    },
-    {
-      "Name": "castrojo/goose",
-      "Images": [
-        {
-          "Digest": "sha256:63f5ea3dda2df72baa618fc224647aab828b542bf0694290d5c6d7a273ad1dd8",
-          "MediaType": "application/vnd.oci.image.manifest.v1+json",
-          "OS": "linux",
-          "Architecture": "amd64",
-          "Tags": [
-            "latest"
-          ],
-          "Labels": {
-            "org.flatpak.ref": "app/io.github.block.Goose/x86_64/stable",
-            "org.flatpak.metadata": "[Application]\nname=io.github.block.Goose\nruntime=org.freedesktop.Platform/x86_64/25.08\nsdk=org.freedesktop.Sdk/x86_64/25.08\nbase=app/org.electronjs.Electron2.BaseApp/x86_64/25.08\ncommand=electron-wrapper\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;session-bus;system-bus;\ndevices=dri;\nfilesystems=home;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\n\n[Environment]\nLD_LIBRARY_PATH=/app/lib\n\n[Extension io.github.block.Goose.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension io.github.block.Goose.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=io.github.block.Goose.Locale;io.github.block.Goose.Debug;",
-            "org.flatpak.installed-size": "566045184",
-            "org.flatpak.download-size": "199249615"
-          }
-        }
-      ]
-    },
-    {
-      "Name": "castrojo/firefox-nightly",
-      "Images": [
-        {
-          "Digest": "sha256:f332eba342c5dbb55aa81cf430a429ef11a72c21dfce3700a9236196bfdb2122",
-          "MediaType": "application/vnd.oci.image.manifest.v1+json",
-          "OS": "linux",
-          "Architecture": "amd64",
-          "Tags": [
-            "latest"
-          ],
-          "Labels": {
-            "org.flatpak.ref": "app/org.mozilla.firefox/x86_64/nightly",
-            "org.flatpak.metadata": "[Application]\nname=org.mozilla.firefox\nruntime=org.freedesktop.Platform/x86_64/24.08\nsdk=org.freedesktop.Sdk/x86_64/24.08\nbase=app/org.mozilla.firefox.BaseApp/x86_64/24.08\ncommand=firefox\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;fallback-x11;pcsc;cups;\ndevices=all;\nfeatures=devel;\nfilesystems=xdg-config/gtk-3.0:ro;xdg-download;/run/.heim_org.h5l.kcm-socket;xdg-run/speech-dispatcher:ro;\npersistent=.mozilla;\n\n[Session Bus Policy]\norg.mozilla.firefox_beta.*=own\norg.mozilla.firefox.*=own\norg.mpris.MediaPlayer2.firefox.*=talk\norg.gtk.vfs.*=talk\norg.a11y.Bus=talk\norg.freedesktop.FileManager1=talk\n\n[System Bus Policy]\norg.freedesktop.NetworkManager=talk\n\n[Environment]\nDICPATH=/usr/share/hunspell\n\n[Extension org.freedesktop.Platform.ffmpeg-full]\ndirectory=lib/ffmpeg\nadd-ld-path=.\nversion=24.08\n\n[Extension org.mozilla.firefox.Locale]\ndirectory=share/runtime/langpack\nno-autodownload=true\nsubdirectories=true\nversion=nightly\n\n[Extension org.mozilla.firefox.systemconfig]\ndirectory=etc/firefox\nno-autodownload=true\nversion=nightly\n\n[Extension org.mozilla.firefox.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension org.mozilla.firefox.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.mozilla.firefox.Locale;org.mozilla.firefox.Debug;",
-            "org.flatpak.installed-size": "327825920",
-            "org.flatpak.download-size": "123395873"
-          }
-        }
-      ]
-    },
-    {
       "Name": "projectbluefin/testhub/goose",
       "Images": [
         {
