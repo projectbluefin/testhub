@@ -3,7 +3,7 @@
 An experimental Flatpak remote designed to prototype Flathub's transition to OCI. Someone promised me a magical land of shared storage and composefs, I guess we'll find out. 😄
 
 - Flatpak packaging pipeline with full automation
-- Serves the remote from GitHub Pages; pushes images to `ghcr.io/projectbluefin/jorgehub`
+- Serves the remote from GitHub Pages; pushes images to `ghcr.io/projectbluefin/testhub`
 - [Chunkah](https://github.com/coreos/chunkah) and [zstd:chunked](https://github.com/containers/storage/blob/main/docs/containers-storage-zstd-chunked.md) enabled for partial pulls on the client
 - Under no circumstance will this remote ever go to production
   - Things the core team wants to test (Ghostty, Goose) to hopefully aid in getting their flatpaks getting submitted to flathub.
@@ -24,7 +24,7 @@ This potentially unlocks all container registries and git forges as Flatpak host
 
 ### Add this remote
 
-    flatpak remote-add --if-not-exists jorgehub oci+https://projectbluefin.github.io/jorgehub
+    flatpak remote-add --if-not-exists testhub oci+https://projectbluefin.github.io/testhub
 
 ### Install packages
 
@@ -37,12 +37,12 @@ This potentially unlocks all container registries and git forges as Flatpak host
 | Thunderbird Nightly | `org.mozilla.Thunderbird` | Thunderbird Nightly email client |
 | VirtualBox | `org.virtualbox.VirtualBox` | Oracle VirtualBox |
 
-    flatpak install jorgehub com.mitchellh.ghostty
-    flatpak install jorgehub io.github.block.Goose
-    flatpak install jorgehub ai.lmstudio.LMStudio
-    flatpak install jorgehub org.mozilla.firefox.nightly
-    flatpak install jorgehub org.mozilla.Thunderbird
-    flatpak install jorgehub org.virtualbox.VirtualBox
+    flatpak install testhub com.mitchellh.ghostty
+    flatpak install testhub io.github.block.Goose
+    flatpak install testhub ai.lmstudio.LMStudio
+    flatpak install testhub org.mozilla.firefox.nightly
+    flatpak install testhub org.mozilla.Thunderbird
+    flatpak install testhub org.virtualbox.VirtualBox
 
 ### Update all
 
@@ -54,9 +54,9 @@ All images are signed with [cosign](https://docs.sigstore.dev/cosign/overview/) 
 
 ```bash
 cosign verify \
-  --certificate-identity=https://github.com/projectbluefin/jorgehub/.github/workflows/build.yml@refs/heads/main \
+  --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/projectbluefin/jorgehub/<app>:<tag>
+  ghcr.io/projectbluefin/testhub/<app>:<tag>
 ```
 
 Exit 0 means the signature is valid. Output is JSON with the certificate details (workflow ref, commit SHA, build timestamp).
@@ -68,9 +68,9 @@ SBOM attestations (SPDX format) are attached to every image. Replace `<app>` and
 ```bash
 cosign verify-attestation \
   --type spdxjson \
-  --certificate-identity=https://github.com/projectbluefin/jorgehub/.github/workflows/build.yml@refs/heads/main \
+  --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/projectbluefin/jorgehub/<app>:<tag> \
+  ghcr.io/projectbluefin/testhub/<app>:<tag> \
   | jq '.payload | @base64d | fromjson'
 ```
 

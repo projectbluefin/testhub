@@ -16,9 +16,9 @@ Replace `<app>` with the app directory name (e.g. `goose`) and `<tag>` with the 
 
 ```bash
 cosign verify \
-  --certificate-identity=https://github.com/projectbluefin/jorgehub/.github/workflows/build.yml@refs/heads/main \
+  --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/projectbluefin/jorgehub/<app>:<tag>
+  ghcr.io/projectbluefin/testhub/<app>:<tag>
 ```
 
 Exit 0 means the signature is valid. Output is JSON containing the certificate details (workflow ref, commit SHA, build timestamp).
@@ -30,9 +30,9 @@ Replace `<app>` and `<tag>` as above.
 ```bash
 cosign verify-attestation \
   --type spdxjson \
-  --certificate-identity=https://github.com/projectbluefin/jorgehub/.github/workflows/build.yml@refs/heads/main \
+  --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/projectbluefin/jorgehub/<app>:<tag> \
+  ghcr.io/projectbluefin/testhub/<app>:<tag> \
   | jq '.payload | @base64d | fromjson'
 ```
 
