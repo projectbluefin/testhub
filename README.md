@@ -50,27 +50,27 @@ This potentially unlocks all container registries and git forges as Flatpak host
 
 ### Checking the Signature
 
-All images are signed with [cosign](https://docs.sigstore.dev/cosign/overview/) keyless signing via GitHub Actions OIDC. Replace `<app>` with the app name (e.g. `goose`) and `<tag>` with the version (e.g. `v0.9.17`):
+All images are signed with [cosign](https://docs.sigstore.dev/cosign/overview/) keyless signing via GitHub Actions OIDC. Replace `<app>` with the app name (e.g. `goose`):
 
 ```bash
 cosign verify \
   --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/projectbluefin/testhub/<app>:<tag>
+  ghcr.io/projectbluefin/testhub/<app>:latest
 ```
 
 Exit 0 means the signature is valid. Output is JSON with the certificate details (workflow ref, commit SHA, build timestamp).
 
 ### Checking the SBOMs
 
-SBOM attestations (SPDX format) are attached to every image. Replace `<app>` and `<tag>` as above:
+SBOM attestations (SPDX format) are attached to every image. Replace `<app>` as above:
 
 ```bash
 cosign verify-attestation \
   --type spdxjson \
   --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/projectbluefin/testhub/<app>:<tag> \
+  ghcr.io/projectbluefin/testhub/<app>:latest \
   | jq '.payload | @base64d | fromjson'
 ```
 

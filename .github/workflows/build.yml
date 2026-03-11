@@ -603,6 +603,7 @@ jobs:
     permissions:
       packages: write
       contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -714,6 +715,34 @@ jobs:
           [[ "${COUNT}" -ge 1 ]] \
             && echo "==> latest index has ${COUNT} platform(s) [${MEDIA_TYPE}]" \
             || { echo "ERROR: latest is not an image index" >&2; exit 1; }
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+
+      - name: Log in to ghcr.io for cosign
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign OCI image index with cosign
+        run: |
+          APP="${{ matrix.app }}"
+          REPO="${{ github.repository }}"
+          # Sign :latest index (resolves to OCI image index digest)
+          cosign sign --yes \
+            --recursive \
+            "ghcr.io/${REPO}/${APP}:latest"
+          echo "==> Signed ghcr.io/${REPO}/${APP}:latest"
+          # Sign version tag if present (bundle-repack apps)
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ -n "${VERSION}" ]]; then
+            cosign sign --yes \
+              --recursive \
+              "ghcr.io/${REPO}/${APP}:${VERSION}"
+            echo "==> Signed ghcr.io/${REPO}/${APP}:${VERSION}"
+          fi
 
   # ── Set package description ───────────────────────────────────────────────
   # Runs after push completes.
