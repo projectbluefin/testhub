@@ -152,10 +152,17 @@ build app="ghostty":
     podman image exists "{{chunkah_image}}" || podman pull "{{chunkah_image}}"
     export CHUNKAH_CONFIG_STR
     CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
+    if [[ -f "${RELEASE_DESC}" ]]; then
+        MAX_LAYERS=$(yq '.["chunkah-max-layers"] // 16' "${RELEASE_DESC}")
+    else
+        MAX_LAYERS=$(yq '.["x-chunkah-max-layers"] // 16' "${MANIFEST}")
+    fi
+    echo "==> chunkah --max-layers ${MAX_LAYERS}"
     podman run --rm \
       --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
       -e CHUNKAH_CONFIG_STR \
       "{{chunkah_image}}" build \
+      --max-layers "${MAX_LAYERS}" \
       > "/tmp/${APP}-chunked.ociarchive"
     echo "==> Loading chunked OCI archive"
     CHUNKED_ID=$(podman load < "/tmp/${APP}-chunked.ociarchive" | grep 'Loaded image:' | grep -oP '(?<=sha256:)[a-f0-9]+')
@@ -352,11 +359,20 @@ loop app="ghostty":
     export CHUNKAH_CONFIG_STR
     CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
 
+    # 3b. Read per-app max-layers cap (defaults to 16 if field absent)
+    if [[ -f "${RELEASE_DESC}" ]]; then
+        MAX_LAYERS=$(yq '.["chunkah-max-layers"] // 16' "${RELEASE_DESC}")
+    else
+        MAX_LAYERS=$(yq '.["x-chunkah-max-layers"] // 16' "${MANIFEST}")
+    fi
+    echo "==> chunkah --max-layers ${MAX_LAYERS}"
+
     # 4. Run chunkah via image-mount — outputs uncompressed OCI archive to stdout
     podman run --rm --name "jorgehub-${APP}-chunkah" \
       --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
       -e CHUNKAH_CONFIG_STR \
       "{{chunkah_image}}" build \
+      --max-layers "${MAX_LAYERS}" \
       > "/tmp/${APP}-chunked.ociarchive"
 
     # 5. Load chunked archive — anchor grep to "Loaded image:" line (not blob sha)
