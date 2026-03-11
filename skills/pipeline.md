@@ -127,6 +127,49 @@ until CI passes end-to-end:
 Never close a "new app" issue based solely on files being committed. The Flatpak
 must be buildable and installable before the issue is closed.
 
+## flatpak-builder-lint known errors
+
+`build.yml` runs `flatpak-builder-lint manifest "flatpaks/$app/manifest.yaml"` during CI.
+The linter has several known behaviors that affect jorgehub:
+
+### appid-filename-mismatch (hard blocker)
+
+The linter expects the manifest filename to match the app-id, e.g. `org.example.App.yaml`.
+Every jorgehub app uses `manifest.yaml` — this triggers `appid-filename-mismatch` on every
+manifest.yaml-based app.
+
+**Fix options (pick one):**
+
+1. Rename each manifest to `<app-id>.yaml` (upstream-preferred approach; requires updating
+   all Justfile/CI references to the filename)
+2. Pass `--exceptions appid-filename-mismatch` to the linter invocation in `build.yml`
+3. Add a per-app lint exceptions file (`.flatpak-builder-lint.json`) in the app directory
+
+Until resolved, any new manifest.yaml-based app will fail lint in CI.
+
+### manifest-unknown-properties (cleanup-commands at module scope)
+
+`cleanup-commands` is a valid field at the top-level manifest, but when placed inside a
+module definition it is flagged as `manifest-unknown-properties`. The correct field at
+module scope is `cleanup` (list of paths), not `cleanup-commands` (list of shell commands).
+
+### finish-args-unnecessary-xdg-config-gtk-3.0-ro-access (error, not warning)
+
+`--filesystem=xdg-config/gtk-3.0:ro` in `finish-args` is flagged as an error (the linter
+considers it unnecessary). Remove the permission or add an exceptions entry.
+
+### Checking errors vs exceptions
+
+To see all current lint errors for an app:
+```bash
+flatpak-builder-lint manifest "flatpaks/<app>/manifest.yaml"
+```
+
+To run with exceptions (suppresses specific named checks):
+```bash
+flatpak-builder-lint --exceptions manifest "flatpaks/<app>/manifest.yaml"
+```
+
 ## Simplicity rule
 
 Tools available in gnome-49 and ubuntu-24.04 runners: `yq`, `jq`, `python3`, `curl`,
