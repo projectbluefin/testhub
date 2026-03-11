@@ -60,6 +60,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/goose",
+      "Images": [
+        {
+          "Digest": "sha256:fd8fd8a51d72a40ca75fd6e7edaa1f957193da4b379e786a697084711706c78b",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/io.github.block.Goose/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=io.github.block.Goose\nruntime=org.freedesktop.Platform/x86_64/25.08\nsdk=org.freedesktop.Sdk/x86_64/25.08\nbase=app/org.electronjs.Electron2.BaseApp/x86_64/25.08\ncommand=electron-wrapper\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;session-bus;system-bus;\ndevices=dri;\nfilesystems=home;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\n\n[Environment]\nLD_LIBRARY_PATH=/app/lib\n\n[Extension io.github.block.Goose.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension io.github.block.Goose.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=io.github.block.Goose.Locale;io.github.block.Goose.Debug;",
+            "org.flatpak.installed-size": "566021120",
+            "org.flatpak.download-size": "199233250"
+          }
+        }
+      ]
     }
   ]
 }
