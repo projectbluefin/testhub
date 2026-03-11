@@ -127,6 +127,17 @@ jobs:
           BRANCH=$(python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); print(d.get('default-branch','stable'))" "flatpaks/${{ matrix.app }}/manifest.yaml")
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
+      - name: Validate metainfo XML
+        if: steps.detect-path.outputs.skip != 'true'
+        run: |
+          METAINFO=$(find flatpaks/${{ matrix.app }} -name "*.metainfo.xml" | head -1)
+          if [ -n "${METAINFO}" ]; then
+            echo "==> Validating ${METAINFO}"
+            appstreamcli validate --no-net "${METAINFO}" || true
+          else
+            echo "==> No metainfo XML found for ${{ matrix.app }} — skipping validation"
+          fi
+
       - name: Build with flatpak-builder (cached)
         if: steps.detect-path.outputs.mode == 'flatpak-builder' && steps.detect-path.outputs.skip != 'true'
         uses: flatpak/flatpak-github-actions/flatpak-builder@92ae9851ad316786193b1fd3f40c4b51eb5cb101 # v6
@@ -137,6 +148,13 @@ jobs:
           cache: true
           cache-key: flatpak-${{ matrix.app }}-${{ matrix.arch }}-${{ hashFiles(format('flatpaks/{0}/manifest.yaml', matrix.app)) }}
           branch: ${{ steps.manifest-meta.outputs.branch }}
+
+      - name: Lint manifest (flatpak-builder path)
+        if: steps.detect-path.outputs.mode == 'flatpak-builder' && steps.detect-path.outputs.skip != 'true'
+        run: |
+          # flatpak-builder-lint is available in the gnome-49 container (job-level container)
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
+            manifest "flatpaks/${{ matrix.app }}/manifest.yaml" || true
 
       - name: Export OCI bundle (flatpak-builder path)
         if: steps.detect-path.outputs.mode == 'flatpak-builder' && steps.detect-path.outputs.skip != 'true'

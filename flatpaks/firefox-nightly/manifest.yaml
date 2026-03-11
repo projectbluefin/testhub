@@ -17,7 +17,7 @@ finish-args:
   - --socket=pcsc
   - --socket=cups
   - --device=all
-  - --allow=devel
+  - --allow=devel  # Required: Firefox Nightly uses developer-only kernel features (performance counters, etc.)
   - --filesystem=xdg-config/gtk-3.0:ro
   - --filesystem=xdg-download
   - --filesystem=/run/.heim_org.h5l.kcm-socket
@@ -90,38 +90,40 @@ modules:
         path: org.mozilla.firefox.desktop
       - type: file
         path: org.mozilla.firefox.appdata.xml
+      # Icons pinned to revision b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3 (2026-03-11).
+      # Update the revision hash and sha256 values when bumping x-version.
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default16.png
-        sha256: 28a8bac75a9dec5069d4a3928ac4664d351d32b911a5f0e57201ba0118bef35e
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/default16.png
+        sha256: f3bd8854cccae6755bef8713fa943eb95c28e6ba9832b2c3be4d82506424ce7a
         dest: icons
         dest-filename: 16.png
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default32.png
-        sha256: ff812f4183820bb9c1934256c52289f0fbd8922ff0eb374d029508617ccd2a9b
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/default32.png
+        sha256: 295d7b69d0494b8edd6e5d0b2358db2e9596aef08af6614b143959b38b42fa09
         dest: icons
         dest-filename: 32.png
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default48.png
-        sha256: f63b83a8e0dc92e1cd0be34313a7f512a8771ff6804f6f5d4a1199ef4dd48b30
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/default48.png
+        sha256: e680e87f17aa475aafc03a3bf54db663d6b7176cfcf661bc7d65ab52482cec2b
         dest: icons
         dest-filename: 48.png
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default64.png
-        sha256: ec6cab8da49bd049b4558978348702a7addc218c6ecd3826a8b944e10d2f0878
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/default64.png
+        sha256: 59d4216229f5cca69ac6953480c763adbf1d4ea8a36cbb91618568bce2ca7ba6
         dest: icons
         dest-filename: 64.png
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default128.png
-        sha256: 4c67676caa243775f91f6b4a5d2bcf8b106b7c7556c154da29481e723a804d5d
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/default128.png
+        sha256: 1fb73d558b439b9a7cb27875a7daf3bfa31f0a6e17037d591c97e7d65b3c03ee
         dest: icons
         dest-filename: 128.png
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/default256.png
-        sha256: 86dac8b6794d2bd3806af4d2cfee9a2eb2fbc05dca77eb599f5ba899d7edabdd
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/default256.png
+        sha256: 10f493f76520954f89b5f4637c5925f09d1f6d9e2fd96420651f20da652f3b85
         dest: icons
         dest-filename: 256.png
       - type: file
-        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/tip/browser/branding/nightly/content/about-logo.svg
-        sha256: 1bc3bb02384b61941ceedd4afae930e25efe288a404604c4b2c2aed6962663bb
+        url: https://hg-edge.mozilla.org/mozilla-central/raw-file/b665f8e02b0c8c7189635bd4b2ca356b79b5a5c3/browser/branding/nightly/content/about-logo.svg
+        sha256: f4c96eb5468e22751093e9c78242a8c344d3b35772e65cb08d060f547e3cad56
         dest: icons
         dest-filename: symbolic.svg

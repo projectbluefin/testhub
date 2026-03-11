@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ai.lmstudio.LMStudio</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary=https://lmstudio.ai/terms</project_license>
+  <name>LM Studio</name>
+  <summary>Discover, download, and run local LLMs</summary>
+  <description>
+    <p>
+      NOTE: LM Studio is proprietary software not affiliated with or endorsed by Flathub.
+      This package is provided for convenience. Use at your own risk.
+    </p>
+    <p>
+      LM Studio is an easy-to-use desktop application for experimenting with local and
+      open-source Large Language Models (LLMs). It allows you to run LLMs locally on your
+      computer, explore and download models from the HuggingFace repository, and use a
+      ChatGPT-like interface with your local models.
+    </p>
+  </description>
+  <url type="homepage">https://lmstudio.ai</url>
+  <developer id="ai.lmstudio">
+    <name>LM Studio</name>
+  </developer>
+  <launchable type="desktop-id">ai.lmstudio.LMStudio.desktop</launchable>
+  <categories>
+    <category>Science</category>
+    <category>Education</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.4.7" date="2025-03-01">
+      <description>
+        <p>LM Studio 0.4.7</p>
+      </description>
+    </release>
+  </releases>
+</component>

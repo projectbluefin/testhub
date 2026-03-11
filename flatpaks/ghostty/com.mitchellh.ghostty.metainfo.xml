@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.mitchellh.ghostty</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Ghostty</name>
+  <summary>Fast, feature-rich, and cross-platform terminal emulator</summary>
+  <description>
+    <p>
+      Ghostty is a terminal emulator that differentiates itself by being
+      fast, feature-rich, and native. While there are many excellent
+      terminal emulators available, they all make tradeoffs between speed,
+      features, and native platform integration. Ghostty attempts to push
+      the boundaries on all three.
+    </p>
+  </description>
+  <url type="homepage">https://ghostty.org</url>
+  <url type="bugtracker">https://github.com/ghostty-org/ghostty/issues</url>
+  <developer id="com.mitchellh">
+    <name>Mitchell Hashimoto</name>
+  </developer>
+  <launchable type="desktop-id">com.mitchellh.ghostty.desktop</launchable>
+  <categories>
+    <category>System</category>
+    <category>TerminalEmulator</category>
+  </categories>
+  <keywords>
+    <keyword>terminal</keyword>
+    <keyword>emulator</keyword>
+    <keyword>shell</keyword>
+  </keywords>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.3.0" date="2026-03-09">
+      <description>
+        <p>Release 1.3.0 of Ghostty terminal emulator.</p>
+      </description>
+    </release>
+  </releases>
+</component>

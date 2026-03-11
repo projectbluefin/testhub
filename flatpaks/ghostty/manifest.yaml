@@ -5,14 +5,13 @@ sdk: org.gnome.Sdk
 default-branch: stable
 command: ghostty
 finish-args:
-  # PTY access + GPU (DRI is a subset of all; keep only --device=all)
-  - --device=all
+  - --device=all  # Required: GPU access (Vulkan/Metal) and PTY device access for terminal
   # Windowing
   - --share=ipc
   - --socket=fallback-x11
   - --socket=wayland
-  # Allow user to specify additional config files in home by default
-  - --filesystem=home:ro
+  # Only ghostty's own config dir needed
+  - --filesystem=xdg-config/ghostty:ro
   # So we can escape the sandbox
   - --talk-name=org.freedesktop.Flatpak
 cleanup:
@@ -34,6 +33,7 @@ modules:
     build-options:
       append-path: /app/zig
     build-commands:
+      # 'zig build install' installs binary, desktop file, and icons (hicolor) to --prefix /app
       - zig build
         -Doptimize=ReleaseFast
         -Dcpu=baseline
@@ -43,6 +43,7 @@ modules:
         --prefix /app
         --search-prefix /app
         --system $PWD/vendor/p
+      - install -Dm644 /run/build/com.mitchellh.ghostty/com.mitchellh.ghostty.metainfo.xml /app/share/metainfo/com.mitchellh.ghostty.metainfo.xml
     sources:
       - type: archive
         x-version: "1.3.0"
@@ -51,3 +52,6 @@ modules:
         strip-components: 1
 
       - zig-packages.json
+
+      - type: file
+        path: com.mitchellh.ghostty.metainfo.xml

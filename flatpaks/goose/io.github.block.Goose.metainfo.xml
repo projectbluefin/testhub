@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.block.Goose</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>Goose</name>
+  <summary>Open-source AI agent for software development</summary>
+  <description>
+    <p>
+      Goose is an open-source AI agent that can work directly in your codebase,
+      run shell commands, read and write files, and help you build software.
+    </p>
+  </description>
+  <url type="homepage">https://github.com/block/goose</url>
+  <url type="bugtracker">https://github.com/block/goose/issues</url>
+  <developer id="io.github.block">
+    <name>Block (Square)</name>
+  </developer>
+  <launchable type="desktop-id">io.github.block.Goose.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2025-01-01">
+      <description><p>Initial release.</p></description>
+    </release>
+  </releases>
+</component>

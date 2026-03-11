@@ -8,8 +8,7 @@ x-version: "0.4.7"
 x-arches: [x86_64]
 command: lm-studio
 finish-args:
-  # GPU compute for AI inference (CUDA, ROCm, Vulkan) — device=dri alone is not enough
-  - --device=all
+  - --device=all  # Required: CUDA/ROCm/Vulkan GPU access for local LLM inference
   # Windowing
   - --share=ipc
   - --socket=fallback-x11
@@ -17,11 +16,11 @@ finish-args:
   # Network access (model downloads, local server API)
   - --share=network
   # User home for models (~/.lmstudio)
-  - --filesystem=home
+  - --filesystem=home  # Required: LM Studio stores models and config in ~/.lmstudio
   # D-Bus for notifications and system integration
   - --talk-name=org.freedesktop.Notifications
-  # Allow URL handler (lmstudio:// scheme)
-  - --talk-name=org.freedesktop.portal.OpenURI
+  # D-Bus portal for URL opening and system integration
+  - --talk-name=org.freedesktop.portal.Desktop
 modules:
   - name: lmstudio
     buildsystem: simple
@@ -31,18 +30,25 @@ modules:
       - tar xf data.tar.xz
       # Copy app files — renamed from "opt/LM Studio/" (space) to "opt/LM-Studio/" (hyphen) in 0.4.7
       - cp -a "opt/LM-Studio/." /app/lm-studio/
+      # Install icon — deb ships a PNG at usr/share/icons/hicolor/0x0/apps/lm-studio.png
+      # (the 0x0 dir name is upstream's; it's a raster PNG despite the path)
+      - install -Dm644 usr/share/icons/hicolor/0x0/apps/lm-studio.png /app/share/icons/hicolor/512x512/apps/ai.lmstudio.LMStudio.png
       # Install desktop file
       - install -Dm644 usr/share/applications/lm-studio.desktop /app/share/applications/ai.lmstudio.LMStudio.desktop
       # Fix desktop file: update Exec, Icon, and remove non-standard lowercase 'category' key
       - sed -i 's|^Exec=.*|Exec=lm-studio %U|' /app/share/applications/ai.lmstudio.LMStudio.desktop
       - sed -i 's|^Icon=.*|Icon=ai.lmstudio.LMStudio|' /app/share/applications/ai.lmstudio.LMStudio.desktop
-      - sed -i '/^category=/d' /app/share/applications/ai.lmstudio.LMStudio.desktop
-      # Wrapper script: Electron SUID sandbox is not usable in Flatpak; use --no-sandbox
+      - sed -i '/^[Cc]ategory=/d' /app/share/applications/ai.lmstudio.LMStudio.desktop
+      # Wrapper script: Electron SUID sandbox is incompatible with Flatpak; use Flatpak's own sandbox instead
       - install -d /app/bin
       - printf '#!/bin/sh\nexec /app/lm-studio/lm-studio --no-sandbox "$@"\n' > /app/bin/lm-studio
       - chmod 755 /app/bin/lm-studio
+      - install -Dm644 /run/build/ai.lmstudio.LMStudio/ai.lmstudio.LMStudio.metainfo.xml /app/share/metainfo/ai.lmstudio.LMStudio.metainfo.xml
     sources:
       - type: file
         url: https://installers.lmstudio.ai/linux/x64/0.4.7-2/LM-Studio-0.4.7-2-x64.deb
         sha256: eab2447932560cb4c889cfabdd680932222e9bc1059306159c155f338f051013
         dest-filename: LM-Studio-0.4.7-2-x64.deb
+
+      - type: file
+        path: ai.lmstudio.LMStudio.metainfo.xml
