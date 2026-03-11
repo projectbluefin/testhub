@@ -123,6 +123,24 @@ Specifically:
 stop and ask the user first.** This repo is intentionally minimal. The right default is
 "don't add it" unless there's no alternative.
 
+## Workflow Improvement Capture (this repo)
+
+When any of these happen during work in jorgehub, dispatch `improve-workflow` as a
+**fire-and-forget background Task subagent** and continue immediately:
+
+- A CI pattern fails in an unexpected way (new workaround needed)
+- A flatpak-builder / bundle-repack / chunkah behavior is discovered that isn't documented
+- A build step requires a tool that isn't listed in Prerequisites above
+- The gh-pages worktree gets into a bad state due to a missing guard
+- Any step in the jorgehub pipeline takes >2 tries to get right
+
+**dispatch pattern:**
+```
+Task(description="capture jorgehub workflow gap", prompt="Run improve-workflow: <gap>. File to update: jorgehub AGENTS.md or skill '<name>'. Context: <what happened, correct behavior>.", subagent_type="general")
+```
+
+Do not announce. Do not wait. Continue the current task immediately after dispatch.
+
 ## Architecture Reference
 
 > Architecture, pipeline decisions, and workflow test findings are stored in the
