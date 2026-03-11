@@ -100,7 +100,9 @@ Rules:
   worktree, run `git fetch origin gh-pages && git rebase origin/gh-pages`. Committing after a
   stash-pop onto a diverged remote and then rebasing causes git to treat JSON content as plain
   text and merge both versions — the result is duplicate entries in `index/static` JSON files.
-  Always manually verify dedup after any rebase of index/static changes.
+  Always manually verify dedup after any rebase of index/static changes. **Session hygiene:**
+  session-end must commit or discard any pending gh-pages worktree changes — never leave the
+  worktree in a dirty or detached HEAD state between sessions.
 
 ## Simplicity Rule
 
@@ -125,3 +127,21 @@ stop and ask the user first.** This repo is intentionally minimal. The right def
 
 > Architecture, pipeline decisions, and workflow test findings are stored in the
 > workflow-state DB. Search with: `journal_search(text: "jorgehub", limit: 10)`
+
+## Renovate Limitations
+
+- **manifest.yaml autoReplaceStringTemplate fragility:** The multiline Renovate `matchString`
+  spanning `x-version` through `sha256` makes faithful reconstruction fragile when fields are
+  not adjacent. If autoReplaceStringTemplate produces wrong output, restructure `manifest.yaml`
+  to place `x-version` immediately above the source block, or handle `x-version` in a separate
+  regex manager.
+- **Renovate cannot compute sha256 for github-releases artifacts:** `currentDigest`/`newDigest`
+  in `autoReplaceStringTemplate` only works when Renovate downloads the artifact. For
+  `github-releases` datasource it does NOT download to compute sha256. Validate when Renovate
+  first runs on a goose update — a post-Renovate hook or manual update may be required.
+
+## Plan Authoring Notes
+
+- **Check existing workflow_dispatch inputs before adding new ones.** `workflow_dispatch` inputs
+  like `app` already gate per-app rebuilds. Do not write a plan task that adds a `force-rebuild`
+  boolean if the existing `app` input already covers the use case.
