@@ -56,3 +56,4 @@ modules:
 
       - type: file
         path: com.mitchellh.ghostty.metainfo.xml
+
