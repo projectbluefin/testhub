@@ -28,25 +28,6 @@ just loop <app>
 - CI (`just build` / GitHub Actions) runs ONLY after `just loop` passes locally
 - Never trigger CI as a substitute for local testing
 
-### Running via devaipod (preferred for agent sessions)
-
-jorgehub has `.devcontainer/devcontainer.json` with `nestedContainers: true` and `--privileged`.
-The workspace image (`gnome-49`) includes podman, buildah, flatpak, just, skopeo, yq, jq, curl.
-Inner `podman run` calls inside `just loop` route via the host podman socket as sibling containers.
-
-```bash
-# Launch task via devaipod (GitHub URL required — not local dir):
-~/.cargo/bin/devaipod run https://github.com/castrojo/jorgehub --host \
-  -c 'LOCAL_REGISTRY=host.containers.internal:5000 just loop <app>'
-```
-
-- `LOCAL_REGISTRY=host.containers.internal:5000` is required — `localhost:5000` resolves to the
-  workspace container, not the host. The Justfile uses `LOCAL_REGISTRY` env var with fallback to
-  `localhost:5000` for direct host runs.
-- Ensure the local registry is running on the host before launching devaipod.
-
-### Running directly on host (also valid)
-
 ```bash
 just loop <app>   # local_registry defaults to localhost:5000
 ```
@@ -110,22 +91,25 @@ Rules:
 - `podman image exists` guard skips gnome-49 re-pull when cached — eliminates ~2-3s per loop
 - `just build` uses `podman push --compression-format=zstd:chunked`; skopeo cannot set this
   compression format, which is why the push path uses podman (not skopeo)
-- jorgehub builds run nested podman directly on the host — use the devaipod workflow
-  (GitHub URL + `LOCAL_REGISTRY=host.containers.internal:5000`) or run `just loop` directly on host.
+- jorgehub builds run nested podman directly on the host — run `just loop` directly on the host,
+  never inside a container wrapper.
 - chunkah pin: `coreos/chunkah` v0.2.0 — fetched as `Containerfile.splitter` from GitHub releases (not a container image); see `CHUNKAH_SPLITTER` env var in build.yml/backfill.yml; pin is managed by Renovate
 - chunkah layer count for goose (~200MB): ~30 layers from OSTree object store heuristics alone;
   xattr-based component hints deferred until repo has 3+ packages (see journal 20260306-184501-301)
 - **Flatpak install validation is mandatory after any OCI push (loop or build).** CI green is not
   sufficient — two flatpaks were 404 on client PCs due to wrong OCI labels/index even when CI
-  passed. After `just loop <app>` or `just build <app>`, run inside a devaipod container:
+  passed. After `just loop <app>` or `just build <app>`, run inside a throwaway container:
   ```bash
-  flatpak remote-add --user --if-not-exists jorgehub ~/src/jorgehub/jorgehub.flatpakrepo
-  flatpak install --user --noninteractive jorgehub <app-id>
-  flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed digest
+  podman run --rm -it --privileged \
+    -v ~/src/jorgehub:/workspace:z -w /workspace \
+    ghcr.io/flathub-infra/flatpak-github-actions:gnome-49 bash
+  # inside: flatpak remote-add --user --if-not-exists jorgehub ~/workspace/jorgehub.flatpakrepo
+  # inside: flatpak install --user --noninteractive jorgehub <app-id>
+  # inside: flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed digest
   ```
   The loop is not complete until `flatpak install` succeeds and `flatpak info` shows the correct digest.
   **ALL flatpak operations (install, inspect, bundle extraction, `find` in `~/.local/share/flatpak`,
-  or any investigation of bundle contents) must run inside the devaipod container — never on the
+  or any investigation of bundle contents) must run inside such a container — never on the
   host.** "Just looking" does not exempt an operation from this rule.
 - **Source URL convention for manifest.yaml apps:** Always use immutable versioned tag archive URLs
   (e.g. `https://github.com/ghostty-org/ghostty/archive/refs/tags/v1.3.0.tar.gz`). Never use

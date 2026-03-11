@@ -5,7 +5,7 @@ default:
 
 # === Configuration ===
 container_image := "ghcr.io/flathub-infra/flatpak-github-actions:gnome-49"
-local_registry := env_var_or_default("LOCAL_REGISTRY", "localhost:5000")
+local_registry := "localhost:5000"
 
 # === Private helpers ===
 
