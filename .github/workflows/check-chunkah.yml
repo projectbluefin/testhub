@@ -1,0 +1,36 @@
+name: Check chunkah upstream
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # Weekly, Monday 07:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Check chunkah invocation pattern drift
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UPSTREAM=$(curl -fsSL https://raw.githubusercontent.com/coreos/chunkah/main/README.md \
+            | grep -A3 'Containerfile.splitter' | head -5)
+          CURRENT=$(grep -A3 'Containerfile.splitter' .github/workflows/build.yml | head -5)
+          if [ "$UPSTREAM" != "$CURRENT" ]; then
+            echo "chunkah invocation pattern may have changed upstream"
+            echo "Upstream README excerpt:"
+            echo "$UPSTREAM"
+            echo "Current build.yml excerpt:"
+            echo "$CURRENT"
+            gh issue create \
+              --title "chunkah: upstream invocation pattern may have changed" \
+              --body "The chunkah usage pattern in README.md appears to differ from build.yml. Please review manually." \
+              --label "maintenance" || true
+          else
+            echo "chunkah invocation pattern matches upstream — no drift"
+          fi

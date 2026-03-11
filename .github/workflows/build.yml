@@ -375,6 +375,14 @@ jobs:
           echo "CHUNKED=${CHUNKED}" >> "$GITHUB_ENV"
           echo "LAYER_COUNT=${LAYER_COUNT}" >> "$GITHUB_ENV"
 
+      - name: Report layer count
+        if: steps.arch-check.outputs.skip != 'true'
+        run: |
+          echo "### Layer count: ${{ matrix.app }} (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Layers | ${LAYER_COUNT} |" >> $GITHUB_STEP_SUMMARY
+
       - name: Push to ghcr.io with zstd:chunked
         id: push
         if: steps.arch-check.outputs.skip != 'true'
