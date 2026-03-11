@@ -37,7 +37,7 @@ modules:
       - cp -a "opt/LM-Studio/." /app/lm-studio/
       # Icon omitted: deb ships 1024x1024 PNG; flatpak-builder rejects >512x512 at export.
       # convert (ImageMagick) not in gnome-49; GdkPixbuf fails (glycin sandbox); resize tool TBD.
-      # See AGENTS.md "lmstudio icon" note for open problem details.
+      # See flatpaks/lmstudio/GOTCHAS.md "Icon omitted" for open problem details.
       # Install desktop file
       - install -Dm644 usr/share/applications/lm-studio.desktop /app/share/applications/ai.lmstudio.LMStudio.desktop
       # Fix desktop file: update Exec, Icon, and remove non-standard lowercase 'category' key

@@ -14,23 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Check chunkah invocation pattern drift
+      - name: Check chunkah version drift
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          UPSTREAM=$(curl -fsSL https://raw.githubusercontent.com/coreos/chunkah/main/README.md \
-            | grep -A3 'Containerfile.splitter' | head -5)
-          CURRENT=$(grep -A3 'Containerfile.splitter' .github/workflows/build.yml | head -5)
-          if [ "$UPSTREAM" != "$CURRENT" ]; then
-            echo "chunkah invocation pattern may have changed upstream"
-            echo "Upstream README excerpt:"
-            echo "$UPSTREAM"
-            echo "Current build.yml excerpt:"
-            echo "$CURRENT"
+          # Extract latest version tag from upstream README (e.g. "v0.3.0")
+          UPSTREAM_VER=$(curl -fsSL https://raw.githubusercontent.com/coreos/chunkah/main/README.md \
+            | grep -oP 'releases/download/\Kv[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          # Extract pinned version from CHUNKAH_SPLITTER URL in build.yml
+          CURRENT_VER=$(grep -oP 'releases/download/\Kv[0-9]+\.[0-9]+\.[0-9]+' \
+            .github/workflows/build.yml | head -1)
+          echo "Upstream chunkah version: ${UPSTREAM_VER}"
+          echo "Pinned chunkah version:   ${CURRENT_VER}"
+          if [ "${UPSTREAM_VER}" != "${CURRENT_VER}" ]; then
+            echo "chunkah version drift detected"
             gh issue create \
-              --title "chunkah: upstream invocation pattern may have changed" \
-              --body "The chunkah usage pattern in README.md appears to differ from build.yml. Please review manually." \
+              --title "chunkah: upstream is ${UPSTREAM_VER}, pinned to ${CURRENT_VER}" \
+              --body "Upstream chunkah README references \`${UPSTREAM_VER}\` but \`build.yml\` pins \`${CURRENT_VER}\`. Update \`CHUNKAH_SPLITTER\` in \`.github/workflows/build.yml\` and verify the invocation pattern has not changed." \
               --label "maintenance" || true
           else
-            echo "chunkah invocation pattern matches upstream — no drift"
+            echo "chunkah version matches upstream — no drift"
           fi
