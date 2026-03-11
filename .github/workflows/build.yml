@@ -303,6 +303,14 @@ jobs:
           name: oci-${{ matrix.app }}-${{ matrix.arch }}
           path: ${{ matrix.app }}.oci
 
+      - name: Restore layer history cache
+        if: steps.arch-check.outputs.skip != 'true'
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: /tmp/layer-history.txt
+          key: layer-history-${{ matrix.app }}-${{ matrix.arch }}-${{ github.run_id }}
+          restore-keys: layer-history-${{ matrix.app }}-${{ matrix.arch }}-
+
       - name: Split layers with chunkah
         if: steps.arch-check.outputs.skip != 'true'
         env:
@@ -392,6 +400,34 @@ jobs:
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Layers | ${LAYER_COUNT} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Layer reuse report
+        if: steps.arch-check.outputs.skip != 'true'
+        run: |
+          HISTORY="/tmp/layer-history.txt"
+          CURRENT=$(podman inspect "${CHUNKED}" | jq -r '.[0].RootFS.Layers[]')
+          TOTAL=$(echo "${CURRENT}" | wc -l)
+          if [[ -f "${HISTORY}" ]]; then
+            REUSED=$(comm -12 <(sort "${HISTORY}") <(echo "${CURRENT}" | sort) | wc -l)
+            CHANGED=$(( TOTAL - REUSED ))
+          else
+            REUSED=0
+            CHANGED=${TOTAL}
+          fi
+          echo "${CURRENT}" > "${HISTORY}"
+          echo "### Layer reuse: ${{ matrix.app }} (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total  | ${TOTAL}   |" >> $GITHUB_STEP_SUMMARY
+          echo "| Reused | ${REUSED}  |" >> $GITHUB_STEP_SUMMARY
+          echo "| Changed| ${CHANGED} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Save layer history cache
+        if: steps.arch-check.outputs.skip != 'true'
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: /tmp/layer-history.txt
+          key: layer-history-${{ matrix.app }}-${{ matrix.arch }}-${{ github.run_id }}
 
       - name: Push to ghcr.io with zstd:chunked
         id: push
