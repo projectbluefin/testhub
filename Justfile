@@ -60,6 +60,15 @@ build app="ghostty":
     ARCH=$(uname -m)
     OCI_DIR=".${APP}.oci"
 
+    # Per-app container image: read x-container-image from manifest.yaml if present, else global default
+    CONTAINER_IMAGE="{{container_image}}"
+    if [[ -f "${MANIFEST}" ]]; then
+        MANIFEST_IMG=$(yq '.["x-container-image"] // ""' "${MANIFEST}")
+        [[ -n "${MANIFEST_IMG}" && "${MANIFEST_IMG}" != "null" ]] && CONTAINER_IMAGE="${MANIFEST_IMG}"
+    fi
+    echo "==> Container image: ${CONTAINER_IMAGE}"
+    OSTREE_REPO=".${APP}-ostree-repo"
+
     if [[ -f "${RELEASE_DESC}" ]]; then
         # === Bundle repack path (e.g. goose) ===
         # Download upstream .flatpak, verify sha256, import into OSTree, export as OCI
@@ -83,28 +92,28 @@ build app="ghostty":
         fi
         echo "==> sha256 OK: ${ACTUAL_SHA}"
         echo "==> Importing bundle into OSTree repo"
-        podman image exists "{{container_image}}" || podman pull "{{container_image}}"
+        podman image exists "${CONTAINER_IMAGE}" || podman pull "${CONTAINER_IMAGE}"
         # Init repo if it doesn't exist — flatpak-builder creates it automatically,
         # but build-import-bundle requires it to already exist
-        [[ -d ".ostree-repo" ]] || podman run --rm --privileged \
+        [[ -d "${OSTREE_REPO}" ]] || podman run --rm --privileged \
           -v "$(pwd):/workspace:z" -w /workspace \
-          "{{container_image}}" \
-          ostree init --mode=archive-z2 --repo=.ostree-repo
+          "${CONTAINER_IMAGE}" \
+          ostree init --mode=archive-z2 --repo="${OSTREE_REPO}"
         # --ref: override the embedded ref name so it matches our standard REF
         podman run --rm --privileged \
           -v "$(pwd):/workspace:z" \
           -v "${BUNDLE_FILE}:${BUNDLE_FILE}:z" \
           -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
-          flatpak build-import-bundle --ref="${REF}" .ostree-repo "${BUNDLE_FILE}"
+          "${CONTAINER_IMAGE}" \
+          flatpak build-import-bundle --ref="${REF}" "${OSTREE_REPO}" "${BUNDLE_FILE}"
         echo "==> Exporting OCI bundle"
         rm -rf "${OCI_DIR}"
         podman run --rm --privileged \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
-          flatpak build-bundle --oci .ostree-repo "${OCI_DIR}" "${REF}"
+          "${CONTAINER_IMAGE}" \
+          flatpak build-bundle --oci "${OSTREE_REPO}" "${OCI_DIR}" "${REF}"
     elif [[ -f "${MANIFEST}" ]]; then
         # === flatpak-builder path (e.g. ghostty) ===
         echo "==> mode: flatpak-builder (manifest.yaml)"
@@ -118,26 +127,26 @@ build app="ghostty":
           || { echo "==> Flatpak-builder: no x-version in manifest.yaml — :latest only"; VERSION=""; }
         echo "==> Building ${REF}"
         echo "==> mode: full (ghcr.io push)"
-        podman image exists "{{container_image}}" || podman pull "{{container_image}}"
+        podman image exists "${CONTAINER_IMAGE}" || podman pull "${CONTAINER_IMAGE}"
         # SOURCE_DATE_EPOCH=0: normalises tar timestamps for deterministic OCI blob hashes
         # --override-source-date-epoch=0: makes OSTree commit timestamps deterministic
-        podman run --rm --privileged \
+         podman run --rm --privileged \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
+          "${CONTAINER_IMAGE}" \
           flatpak-builder \
             --disable-rofiles-fuse --force-clean \
             --override-source-date-epoch=0 \
-            --repo=.ostree-repo \
-            .build-dir "${MANIFEST}"
+            --repo="${OSTREE_REPO}" \
+            ".${APP}-build-dir" "${MANIFEST}"
         # OCI export — SOURCE_DATE_EPOCH=0 is sufficient for build-bundle (reads env directly)
         # Do NOT pass --override-source-date-epoch to build-bundle — it is a flatpak-builder-only flag
         rm -rf "${OCI_DIR}"
         podman run --rm --privileged \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
-          flatpak build-bundle --oci .ostree-repo "${OCI_DIR}" "${REF}"
+          "${CONTAINER_IMAGE}" \
+          flatpak build-bundle --oci "${OSTREE_REPO}" "${OCI_DIR}" "${REF}"
     else
         echo "ERROR: no manifest.yaml or release.yaml found in flatpaks/${APP}/" >&2
         exit 1
@@ -259,6 +268,15 @@ loop app="ghostty":
     ARCH=$(uname -m)
     OCI_DIR=".${APP}.oci"
 
+    # Per-app container image: read x-container-image from manifest.yaml if present, else global default
+    CONTAINER_IMAGE="{{container_image}}"
+    if [[ -f "${MANIFEST}" ]]; then
+        MANIFEST_IMG=$(yq '.["x-container-image"] // ""' "${MANIFEST}")
+        [[ -n "${MANIFEST_IMG}" && "${MANIFEST_IMG}" != "null" ]] && CONTAINER_IMAGE="${MANIFEST_IMG}"
+    fi
+    echo "==> Container image: ${CONTAINER_IMAGE}"
+    OSTREE_REPO=".${APP}-ostree-repo"
+
     if [[ -f "${RELEASE_DESC}" ]]; then
         # === Bundle repack path (e.g. goose) ===
         echo "==> mode: bundle-repack LOCAL_ONLY"
@@ -292,25 +310,25 @@ loop app="ghostty":
         fi
         echo "==> sha256 OK: ${ACTUAL_SHA}"
         echo "==> Importing bundle into OSTree repo"
-        podman image exists "{{container_image}}" || podman pull "{{container_image}}"
-        [[ -d ".ostree-repo" ]] || podman run --rm --privileged --name "jorgehub-${APP}-ostree-init" \
+        podman image exists "${CONTAINER_IMAGE}" || podman pull "${CONTAINER_IMAGE}"
+        [[ -d "${OSTREE_REPO}" ]] || podman run --rm --privileged --name "jorgehub-${APP}-ostree-init" \
           -v "$(pwd):/workspace:z" -w /workspace \
-          "{{container_image}}" \
-          ostree init --mode=archive-z2 --repo=.ostree-repo
+          "${CONTAINER_IMAGE}" \
+          ostree init --mode=archive-z2 --repo="${OSTREE_REPO}"
         podman run --rm --privileged --name "jorgehub-${APP}-import" \
           -v "$(pwd):/workspace:z" \
           -v "${BUNDLE_FILE}:${BUNDLE_FILE}:z" \
           -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
-          flatpak build-import-bundle --ref="${REF}" .ostree-repo "${BUNDLE_FILE}"
+          "${CONTAINER_IMAGE}" \
+          flatpak build-import-bundle --ref="${REF}" "${OSTREE_REPO}" "${BUNDLE_FILE}"
         echo "==> Exporting OCI bundle"
         rm -rf "${OCI_DIR}"
         podman run --rm --privileged --name "jorgehub-${APP}-bundle" \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
-          flatpak build-bundle --oci .ostree-repo "${OCI_DIR}" "${REF}"
+          "${CONTAINER_IMAGE}" \
+          flatpak build-bundle --oci "${OSTREE_REPO}" "${OCI_DIR}" "${REF}"
     elif [[ -f "${MANIFEST}" ]]; then
         # === flatpak-builder path (e.g. ghostty) ===
         echo "==> mode: flatpak-builder LOCAL_ONLY"
@@ -323,22 +341,22 @@ loop app="ghostty":
           && echo "==> Flatpak-builder: VERSION=${VERSION}" \
           || { echo "==> Flatpak-builder: no x-version in manifest.yaml — :latest only"; VERSION=""; }
         echo "==> Building ${REF}"
-        podman image exists "{{container_image}}" || podman pull "{{container_image}}"
+        podman image exists "${CONTAINER_IMAGE}" || podman pull "${CONTAINER_IMAGE}"
         podman run --rm --privileged --name "jorgehub-${APP}-build" \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
+          "${CONTAINER_IMAGE}" \
           flatpak-builder \
             --disable-rofiles-fuse --force-clean \
             --override-source-date-epoch=0 \
-            --repo=.ostree-repo \
-            .build-dir "${MANIFEST}"
+            --repo="${OSTREE_REPO}" \
+            ".${APP}-build-dir" "${MANIFEST}"
         rm -rf "${OCI_DIR}"
         podman run --rm --privileged --name "jorgehub-${APP}-bundle" \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
-          "{{container_image}}" \
-          flatpak build-bundle --oci .ostree-repo "${OCI_DIR}" "${REF}"
+          "${CONTAINER_IMAGE}" \
+          flatpak build-bundle --oci "${OSTREE_REPO}" "${OCI_DIR}" "${REF}"
     else
         echo "ERROR: no manifest.yaml or release.yaml found in flatpaks/${APP}/" >&2
         exit 1

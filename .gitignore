@@ -1,5 +1,7 @@
 .build-dir/
+.*-build-dir/
 .ostree-repo/
+.*-ostree-repo/
 *.oci/
 *.bundle
 *.flatpak

@@ -2,224 +2,39 @@
 
 Personal OCI Flatpak hosting repository. Builds Flatpak apps as OCI images, pushes to
 ghcr.io with `zstd:chunked` compression, and serves a Flatpak remote index via GitHub Pages.
-Ghostty is the first app and the proof-of-concept for the full pipeline.
 
-## Prerequisites
+## Skills
 
-- `podman` — container runtime; build runs flatpak-builder inside the `gnome-49` image
-- `skopeo` — OCI image copy and inspect
-- Local registry must be running before `just loop`:
-  ```bash
-  podman run -d --name jorgehub-registry -p 5000:5000 \
-    -v jorgehub-registry-data:/var/lib/registry:z \
-    docker.io/library/registry:2
-  ```
-- `gh auth login` required for `just build` (ghcr.io push); NOT needed for `just loop`
+Domain-specific knowledge lives in `skills/`. Load the relevant skill before working in
+that area.
 
-## Development Policy
+| Skill | When to load |
+|---|---|
+| `skills/pipeline.md` | Build pipeline, chunkah, flatpak install validation, simplicity rule |
+| `skills/versioning.md` | OCI tags, `x-version`, `version`, source URL convention |
+| `skills/flatpak-labels.md` | Labels vs annotations, label preservation across chunkah |
+| `skills/gh-pages-index.md` | `update-index`, worktree hygiene |
+| `skills/app-gotchas.md` | Per-app known issues (firefox-nightly, lmstudio, goose, bundle-repack) |
+| `skills/renovate.md` | Renovate limitations for manifest.yaml and release.yaml |
 
-**All development and testing MUST be verified locally before CI.**
+## Key files
 
-```bash
-just loop-all          # preferred: build ALL apps concurrently (one container per app)
-just loop <app>        # single-app loop when only one app is affected
-```
-
-- `just loop-all` is the preferred validation pass — runs all apps in parallel, one `just loop` per app, reports per-app logs on completion
-- `just loop <app>` is used only when a change affects a single app in isolation
-- **Never run apps sequentially when validating multiple apps** — concurrent builds are always preferred; one container per app is the invariant
-- CI (`just build` / GitHub Actions) runs ONLY after `just loop` / `just loop-all` passes locally
-- Never trigger CI as a substitute for local testing
-
-```bash
-just loop-all          # local_registry defaults to localhost:5000; runs ghostty goose lmstudio firefox-nightly in parallel
-just loop <app>        # single app; local_registry defaults to localhost:5000
-```
-
-## Build Commands
-
-```bash
-just loop ghostty          # LOCAL_ONLY: build + local registry (no ghcr push) — dev loop target
-just build ghostty         # Full build + push to ghcr.io with zstd:chunked
-just update-index ghostty  # Regenerate gh-pages index from latest ghcr.io digest
-just check-index           # Validate index/static JSON is well-formed
-```
-
-## Pipeline
-
-```
-flatpak-builder / bundle-repack (inside gnome-49 container, --privileged)
-  → OSTree repo (.ostree-repo/)
-  → flatpak build-bundle --oci (.<app>.oci/) — single flat layer
-  → podman pull oci:... → IMAGE_ID (loads into podman store)
-  → chunkah (coreos/chunkah via Containerfile.splitter, --mount=type=image) → CHUNKED_ID (N content-based layers)
-  → skopeo copy → localhost:5000 (loop) or podman push zstd:chunked → ghcr.io (build/CI)
-  → update-index.py → gh-pages branch index/static
-```
-
-Two build paths under `flatpaks/<app>/`:
-- `manifest.yaml` — flatpak-builder (e.g. ghostty)
-- `release.yaml` — bundle-repack: download upstream `.flatpak`, verify sha256, import, export OCI (e.g. goose)
-
-## Key Files
-
-- `flatpaks/<app>/manifest.yaml` — Flatpak build manifest (flatpak-builder path)
-- `flatpaks/<app>/release.yaml` — upstream bundle descriptor (bundle-repack path)
+- `flatpaks/<app>/manifest.yaml` — flatpak-builder path
+- `flatpaks/<app>/release.yaml` — bundle-repack path
 - `scripts/update-index.py` — regenerates `index/static` on gh-pages branch
-- `Justfile` — all commands proxied through `just`
+- `Justfile` — all commands; use `just --list`
 
-## Versioning Convention
+## Apps
 
-**Every package in this repo must carry an explicit version tag on ghcr.io in addition to `:latest`.**
+`ghostty` (manifest.yaml), `goose` `lmstudio` `firefox-nightly` (release.yaml or manifest.yaml)
 
-| Build path | Version source | OCI tag produced |
-|---|---|---|
-| `release.yaml` (bundle-repack) | `version:` field in `release.yaml` | `:v1.2.3` |
-| `manifest.yaml` (flatpak-builder) | `x-version:` field in `manifest.yaml` | `:1.2.3` |
+## Workflow improvement
 
-Rules:
-- `release.yaml` apps: `version` is a required field — CI errors if missing
-- `manifest.yaml` apps: add `x-version: "<version>"` as a top-level field; flatpak-builder ignores `x-`-prefixed fields
-- If `x-version` is absent, CI warns and pushes `:latest` only — this is a gap, not intentional
-- Version strings must reflect the actual upstream version of the bundled app (not build dates, git shas, or repo versions)
-- When upgrading an app, update `x-version` (or `version`) in the same commit that updates the source URL/sha256
+When a CI pattern fails unexpectedly, a pipeline behavior is discovered that isn't
+documented, or any step takes >2 tries to get right: update the relevant skill file
+immediately. Skills are the single source of truth for this repo's institutional knowledge.
 
-## Critical Notes
+## Architecture reference
 
-- `SOURCE_DATE_EPOCH=0` is set at job level in CI — required for deterministic OCI blob hashes;
-  without it, every run produces a different sha256 even for identical content (tar timestamps differ)
-- Labels (NOT annotations) carry `org.flatpak.ref` and `org.flatpak.metadata` — flatpak client
-  reads Labels only; skopeo inspect verifies this after each push
-- Labels are preserved across chunkah via `CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')`;
-  must `export CHUNKAH_CONFIG_STR` before assigning under `set -euo pipefail`
-- `podman image exists` guard skips gnome-49 re-pull when cached — eliminates ~2-3s per loop
-- `just build` uses `podman push --compression-format=zstd:chunked`; skopeo cannot set this
-  compression format, which is why the push path uses podman (not skopeo)
-- jorgehub builds run nested podman directly on the host — run `just loop` directly on the host,
-  never inside a container wrapper.
-- chunkah pin: `coreos/chunkah` v0.3.0 — fetched as `Containerfile.splitter` from GitHub releases (not a container image); see `CHUNKAH_SPLITTER` env var in build.yml/backfill.yml; pin is managed by Renovate. v0.3.0 brings 75% memory reduction (streaming), 40% speed improvement (multi-threading), and reproducibility fixes; Containerfile.splitter and invocation are unchanged from v0.2.0 — upgrading is a straight pin bump in CHUNKAH_SPLITTER
-- chunkah layer count for goose (~200MB): ~30 layers from OSTree object store heuristics alone;
-  xattr-based component hints deferred until repo has 3+ packages (see journal 20260306-184501-301)
-- **Flatpak install validation is mandatory after any OCI push (loop or build).** CI green is not
-  sufficient — two flatpaks were 404 on client PCs due to wrong OCI labels/index even when CI
-  passed. After `just loop <app>` or `just build <app>`, run inside a throwaway container:
-  ```bash
-  podman run --rm -it --privileged \
-    -v ~/src/jorgehub:/workspace:z -w /workspace \
-    ghcr.io/flathub-infra/flatpak-github-actions:gnome-49 bash
-  # inside: flatpak remote-add --user --if-not-exists jorgehub ~/workspace/jorgehub.flatpakrepo
-  # inside: flatpak install --user --noninteractive jorgehub <app-id>
-  # inside: flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed digest
-  ```
-  The loop is not complete until `flatpak install` succeeds and `flatpak info` shows the correct digest.
-  **ALL flatpak operations (install, inspect, bundle extraction, `find` in `~/.local/share/flatpak`,
-  or any investigation of bundle contents) must run inside such a container — never on the
-  host.** "Just looking" does not exempt an operation from this rule.
-- **Source URL convention for manifest.yaml apps:** Always use immutable versioned tag archive URLs
-  (e.g. `https://github.com/ghostty-org/ghostty/archive/refs/tags/v1.3.0.tar.gz`). Never use
-  rolling `tip`, `latest`, or branch archive URLs — the tarball content and sha256 change without
-  notice, causing non-deterministic build failures. When upgrading, find the exact tag URL and
-  update sha256 in the same commit.
-- **gh-pages worktree: always fetch before committing.** Before any `git add` in the gh-pages
-  worktree, run `git fetch origin gh-pages && git rebase origin/gh-pages`. Committing after a
-  stash-pop onto a diverged remote and then rebasing causes git to treat JSON content as plain
-  text and merge both versions — the result is duplicate entries in `index/static` JSON files.
-  Always manually verify dedup after any rebase of index/static changes. **Session hygiene:**
-  session-end must commit or discard any pending gh-pages worktree changes — never leave the
-  worktree in a dirty or detached HEAD state between sessions.
-- **hg.mozilla.org json-log API:** The JSON key for changesets is `changesets`, not `entries`.
-  Correct python3 extraction: `python3 -c "import sys,json; data=json.load(sys.stdin); print(data['changesets'][0]['node'])"`.
-  Also: hg.mozilla.org redirects to hg-edge — always pass `-L` to curl when fetching from hg.mozilla.org.
-- **bundle-repack apps cannot receive metainfo injection at build time.** The `release.yaml` pipeline
-  downloads a pre-built upstream `.flatpak` bundle and repackages it as OCI — there is no mechanism
-  to inject source-side files (e.g. `metainfo.xml`) into the bundle during this process. Metainfo
-  XML files committed to `flatpaks/<app>/` are source-side assets only; they will not appear in the
-  installed Flatpak unless the upstream bundle already includes them. This is a known limitation of
-  the bundle-repack path. To ship metainfo for a bundle-repack app, the upstream `.flatpak` must
-  include it, or the app must be migrated to the `manifest.yaml` (flatpak-builder) path.
-- **LM Studio metainfo release date placeholder:** `flatpaks/lmstudio/metainfo.xml` uses a
-  placeholder release date (`2025-03-01` for v0.4.7) because lmstudio.ai/changelog only listed
-  entries up to v0.4.6 as of 2026-03-11. Update the date when the upstream changelog is updated.
-- **lmstudio icon is 1024×1024; resize to 512×512 is an open problem (WORKAROUND: icon omitted):**
-  The deb ships a 1024×1024 PNG at `usr/share/icons/hicolor/0x0/apps/lm-studio.png`.
-  flatpak-builder rejects any icon >512×512 at export time regardless of the hicolor directory name.
-  Known failed approaches inside the flatpak-builder sandbox (gnome-49 build-commands):
-  - `convert` (ImageMagick) — not available in gnome-49
-  - `python3 gi` / GdkPixbuf — fails because glycin sandboxed loaders are unavailable inside the
-    flatpak-builder restricted build environment; `GdkPixbuf.Pixbuf.new_from_file()` raises an error
-  - `ffmpeg` — available but overkill; not confirmed working for PNG→PNG resize in this context
-  **Current workaround:** the lmstudio manifest skips the icon entirely until a working resize tool
-  is confirmed. To resolve: identify a tool available in gnome-49 build-commands that can resize a
-  PNG without requiring glycin loaders (e.g. `python3 PIL/Pillow`, `gdk-pixbuf-thumbnailer`,
-  `magick` from ImageMagick 7, or `ffmpeg -vf scale=512:512`). Verify inside a live gnome-49
-  container before updating the manifest.
-- **firefox-nightly aarch64 sha256 is intentionally rolling-stale.** The nightly manifest uses
-  `latest-mozilla-central` rolling URLs — the sha256 for aarch64 becomes stale daily by design.
-  This is acceptable for a nightly-tracking app. Do not attempt to pin sha256 for nightly builds;
-  document in the manifest comment that the aarch64 sha256 must be refreshed on each build loop.
-- **firefox-nightly requires `org.mozilla.firefox.BaseApp//24.08` pre-installed in the build container.**
-  The `freedesktop-24.08` runtime (used by gnome-49) does not include `org.mozilla.firefox.BaseApp`
-  by default. In a clean local environment, `just loop firefox-nightly` fails with "BaseApp not installed".
-  Fix: run `flatpak install --user flathub org.mozilla.firefox.BaseApp//24.08` inside the gnome-49
-  build container before invoking flatpak-builder, or add a pre-install step to the loop recipe. This
-  also means `just loop-all` will fail for firefox-nightly on first run in clean environments.
-
-## Simplicity Rule
-
-**Prefer tools that are already available in the build environment over custom code.**
-
-The gnome-49 container and ubuntu-24.04 runners include `yq`, `jq`, `python3`, `curl`,
-`skopeo`, `podman`, `buildah`, `flatpak`, `ostree`. Use these directly.
-
-**Before adding any inline script, helper function, or new dependency, ask:**
-> "Does a pre-installed tool already do this?"
-
-Specifically:
-- YAML field extraction → `yq '.field' file` (NOT inline python3/awk/sed)
-- JSON processing → `jq` (NOT inline python3)
-- File download + verify → `curl` + `sha256sum` (NOT custom scripts)
-
-**When making a change that adds new tooling, a new dependency, or a new abstraction layer,
-stop and ask the user first.** This repo is intentionally minimal. The right default is
-"don't add it" unless there's no alternative.
-
-## Workflow Improvement Capture (this repo)
-
-When any of these happen during work in jorgehub, dispatch `improve-workflow` as a
-**fire-and-forget background Task subagent** and continue immediately:
-
-- A CI pattern fails in an unexpected way (new workaround needed)
-- A flatpak-builder / bundle-repack / chunkah behavior is discovered that isn't documented
-- A build step requires a tool that isn't listed in Prerequisites above
-- The gh-pages worktree gets into a bad state due to a missing guard
-- Any step in the jorgehub pipeline takes >2 tries to get right
-
-**dispatch pattern:**
-```
-Task(description="capture jorgehub workflow gap", prompt="Run improve-workflow: <gap>. File to update: jorgehub AGENTS.md or skill '<name>'. Context: <what happened, correct behavior>.", subagent_type="general")
-```
-
-Do not announce. Do not wait. Continue the current task immediately after dispatch.
-
-## Architecture Reference
-
-> Architecture, pipeline decisions, and workflow test findings are stored in the
-> workflow-state DB. Search with: `journal_search(text: "jorgehub", limit: 10)`
-
-## Renovate Limitations
-
-- **manifest.yaml autoReplaceStringTemplate fragility:** The multiline Renovate `matchString`
-  spanning `x-version` through `sha256` makes faithful reconstruction fragile when fields are
-  not adjacent. If autoReplaceStringTemplate produces wrong output, restructure `manifest.yaml`
-  to place `x-version` immediately above the source block, or handle `x-version` in a separate
-  regex manager.
-- **Renovate cannot compute sha256 for github-releases artifacts:** `currentDigest`/`newDigest`
-  in `autoReplaceStringTemplate` only works when Renovate downloads the artifact. For
-  `github-releases` datasource it does NOT download to compute sha256. Validate when Renovate
-  first runs on a goose update — a post-Renovate hook or manual update may be required.
-
-## Plan Authoring Notes
-
-- **Check existing workflow_dispatch inputs before adding new ones.** `workflow_dispatch` inputs
-  like `app` already gate per-app rebuilds. Do not write a plan task that adds a `force-rebuild`
-  boolean if the existing `app` input already covers the use case.
+Pipeline decisions and findings are in the workflow-state DB:
+`journal_search(text: "jorgehub", limit: 10)`
