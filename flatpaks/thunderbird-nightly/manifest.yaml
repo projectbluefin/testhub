@@ -107,3 +107,4 @@ modules:
         sha256: f46af33958814b7d26de5c896dbe70ef26f2d079a96c280bf0266d5e7aeb6904
         dest: icons
         dest-filename: 256.png
+
