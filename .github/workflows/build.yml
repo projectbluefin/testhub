@@ -165,6 +165,7 @@ jobs:
         uses: flatpak/flatpak-github-actions/flatpak-builder@92ae9851ad316786193b1fd3f40c4b51eb5cb101 # v6
         with:
           manifest-path: flatpaks/${{ matrix.app }}/manifest.yaml
+          arch: ${{ matrix.arch }}
           build-bundle: false
           upload-artifact: false
           cache: true
