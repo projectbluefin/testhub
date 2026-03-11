@@ -1,13 +1,15 @@
-# OCI Flatpak Remote
+# Bluefin's OCI Flatpak Remote
 
 An experimental Flatpak remote designed to prototype Flathub's transition to OCI. Someone promised me a magical land of shared storage and composefs, I guess we'll find out. 😄
 
 - Flatpak packaging pipeline with full automation
-- Serves the remote from GitHub Pages; pushes images to `ghcr.io/<org>/<repo-name>`
-- [Chunkah](https://github.com/coreos/chunkah) and [zstd:chunked](https://github.com/containers/storage/blob/main/docs/containers-storage-zstd-chunked.md) enabled for partial pulls
-- We need data when this lands in OS bootc images so we might as well get going.
+- Serves the remote from GitHub Pages; pushes images to `ghcr.io/projectbluefin/jorgehub`
+- [Chunkah](https://github.com/coreos/chunkah) and [zstd:chunked](https://github.com/containers/storage/blob/main/docs/containers-storage-zstd-chunked.md) enabled for partial pulls on the client
+- Under no circumstance will this remote ever go to production
+  - Things the core team wants to test (Ghostty, Goose) to hopefully aid in getting their flatpaks getting submitted to flathub.
+  - Purpose is to gather data for using OCI for Flathub distribution.
 
-This potentially unlocks all container registries and git forges as Flatpak hosts in a format supported by flatpak. This is a prototype and not a replacement or substitute for Flathub's official process, this is designed to test the package format changes.
+This potentially unlocks all container registries and git forges as Flatpak hosts in a format supported by flatpak. This is a prototype and not a replacement or substitute for Flathub's official process.
 
 ## Key Dependencies
 
@@ -46,64 +48,30 @@ This potentially unlocks all container registries and git forges as Flatpak host
 
     flatpak update
 
-## Fork and host your own
+### Checking the Signature
 
-This repo is a self-contained pipeline. Fork it, enable GitHub Pages, and you have your own Flatpak OCI remote hosted on ghcr.io.
+All images are signed with [cosign](https://docs.sigstore.dev/cosign/overview/) keyless signing via GitHub Actions OIDC. Replace `<app>` with the app name (e.g. `goose`) and `<tag>` with the version (e.g. `v0.9.17`):
 
-### 1. Fork the repository
-
-Fork on GitHub, then set up GitHub Pages for the fork:
-
-1. Go to **Settings → Pages**
-2. Set **Source** to **Deploy from a branch**
-3. Set **Branch** to `gh-pages`, folder `/` (root)
-4. Save — GitHub will show you the Pages URL: `https://<your-org>.github.io/<repo-name>`
-
-### 2. Give Actions permission to push
-
-The pipeline pushes OCI images to `ghcr.io` and updates the `gh-pages` branch using the default `GITHUB_TOKEN`. No extra secrets are needed, but the token needs write permission:
-
-1. Go to **Settings → Actions → General**
-2. Under **Workflow permissions**, select **Read and write permissions**
-3. Save
-
-### 3. Add an app
-
-Two packaging paths are available depending on whether an upstream `.flatpak` bundle exists:
-
-**Bundle repack** (upstream distributes a `.flatpak` file — faster, no compile step):
-
-Copy `flatpaks/TEMPLATE/release.yaml.example` to `flatpaks/<app-id>/release.yaml` and fill in:
-
-```yaml
-app-id: com.example.MyApp
-version: "1.2.3"
-url: https://example.com/releases/v1.2.3/MyApp.flatpak
-sha256: <sha256 of the file above>
+```bash
+cosign verify \
+  --certificate-identity=https://github.com/projectbluefin/jorgehub/.github/workflows/build.yml@refs/heads/main \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  ghcr.io/projectbluefin/jorgehub/<app>:<tag>
 ```
 
-Compute the sha256 with:
+Exit 0 means the signature is valid. Output is JSON with the certificate details (workflow ref, commit SHA, build timestamp).
 
-    curl -sL <url> | sha256sum
+### Checking the SBOMs
 
-**Build from source** (no upstream bundle — uses flatpak-builder):
+SBOM attestations (SPDX format) are attached to every image. Replace `<app>` and `<tag>` as above:
 
-Copy `flatpaks/TEMPLATE/manifest.yaml.example` to `flatpaks/<app-id>/manifest.yaml` and fill in the standard flatpak-builder fields. The `x-version` field controls the OCI tag.
+```bash
+cosign verify-attestation \
+  --type spdxjson \
+  --certificate-identity=https://github.com/projectbluefin/jorgehub/.github/workflows/build.yml@refs/heads/main \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  ghcr.io/projectbluefin/jorgehub/<app>:<tag> \
+  | jq '.payload | @base64d | fromjson'
+```
 
-### 4. Trigger a build
-
-Once your app directory is committed and pushed, trigger a build from the **Actions** tab:
-
-1. Go to **Actions → Build Flatpak OCI**
-2. Click **Run workflow**
-3. Enter the app directory name (e.g. `goose`) in the **app** field
-4. Click **Run workflow**
-
-The pipeline builds for `x86_64` and `aarch64`, pushes the OCI image to `ghcr.io/<org>/<repo>`, and regenerates the Flatpak index on the `gh-pages` branch.
-
-### 5. Add the remote and install
-
-Replace `<org>` and `<repo-name>` with your GitHub org/user and repo name:
-
-    flatpak remote-add --if-not-exists <repo-name> oci+https://<org>.github.io/<repo-name>
-    flatpak install <repo-name> com.example.MyApp
+Output is the full SPDX document listing all packages and dependencies in the image.
