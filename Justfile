@@ -6,6 +6,7 @@ default:
 # === Configuration ===
 container_image := "ghcr.io/flathub-infra/flatpak-github-actions:gnome-49"
 local_registry := "localhost:5000"
+chunkah_image := "quay.io/jlebon/chunkah:v0.3.0"
 
 # === Private helpers ===
 
@@ -148,13 +149,13 @@ build app="ghostty":
     # Apply OCI standard labels before chunkah — labels added after CHUNKAH_CONFIG_STR is captured are lost
     IMAGE_ID=$(just _apply-oci-labels "${IMAGE_ID}" "${VERSION:-}" "${URL:-}" "${RELEASE_DESC}")
     echo "==> Running chunkah to split into content-based layers"
-    podman image exists "quay.io/jlebon/chunkah:v0.2.0" || podman pull "quay.io/jlebon/chunkah:v0.2.0"
+    podman image exists "{{chunkah_image}}" || podman pull "{{chunkah_image}}"
     export CHUNKAH_CONFIG_STR
     CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
     podman run --rm \
       --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
       -e CHUNKAH_CONFIG_STR \
-      quay.io/jlebon/chunkah:v0.2.0 build \
+      "{{chunkah_image}}" build \
       > "/tmp/${APP}-chunked.ociarchive"
     echo "==> Loading chunked OCI archive"
     CHUNKED_ID=$(podman load < "/tmp/${APP}-chunked.ociarchive" | grep 'Loaded image:' | grep -oP '(?<=sha256:)[a-f0-9]+')
@@ -212,6 +213,35 @@ build app="ghostty":
     echo "==> All ${LAYER_COUNT} layers are zstd:chunked"
     echo "==> Done. ghcr.io/${GH_OWNER}/${APP}:latest-${ARCH} @ ${GHCR_DIGEST}"
 
+# Loop all apps concurrently — one just loop per app, parallel (preferred for local validation passes)
+loop-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    APPS=(ghostty goose lmstudio firefox-nightly)
+    echo "==> loop-all: building ${#APPS[@]} apps in parallel"
+    pids=()
+    for app in "${APPS[@]}"; do
+        just loop "${app}" > "/tmp/loop-${app}.log" 2>&1 &
+        pids+=("$!:${app}")
+        echo "==> Started loop for ${app} (pid $!)"
+    done
+    failed=()
+    for entry in "${pids[@]}"; do
+        pid="${entry%%:*}"; app="${entry##*:}"
+        if wait "${pid}"; then
+            echo "==> OK: ${app}"
+        else
+            echo "==> FAIL: ${app} — see /tmp/loop-${app}.log"
+            failed+=("${app}")
+        fi
+    done
+    for app in "${APPS[@]}"; do
+        echo "--- ${app} log ---"
+        cat "/tmp/loop-${app}.log"
+    done
+    (( ${#failed[@]} == 0 )) || { echo "FAILED: ${failed[*]}"; exit 1; }
+    echo "==> loop-all done"
+
 # Loop: build + local registry only (no ghcr push) — dev iteration target
 loop app="ghostty":
     #!/usr/bin/env bash
@@ -256,11 +286,11 @@ loop app="ghostty":
         echo "==> sha256 OK: ${ACTUAL_SHA}"
         echo "==> Importing bundle into OSTree repo"
         podman image exists "{{container_image}}" || podman pull "{{container_image}}"
-        [[ -d ".ostree-repo" ]] || podman run --rm --privileged \
+        [[ -d ".ostree-repo" ]] || podman run --rm --privileged --name "jorgehub-${APP}-ostree-init" \
           -v "$(pwd):/workspace:z" -w /workspace \
           "{{container_image}}" \
           ostree init --mode=archive-z2 --repo=.ostree-repo
-        podman run --rm --privileged \
+        podman run --rm --privileged --name "jorgehub-${APP}-import" \
           -v "$(pwd):/workspace:z" \
           -v "${BUNDLE_FILE}:${BUNDLE_FILE}:z" \
           -w /workspace \
@@ -269,7 +299,7 @@ loop app="ghostty":
           flatpak build-import-bundle --ref="${REF}" .ostree-repo "${BUNDLE_FILE}"
         echo "==> Exporting OCI bundle"
         rm -rf "${OCI_DIR}"
-        podman run --rm --privileged \
+        podman run --rm --privileged --name "jorgehub-${APP}-bundle" \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
           "{{container_image}}" \
@@ -287,7 +317,7 @@ loop app="ghostty":
           || { echo "==> Flatpak-builder: no x-version in manifest.yaml — :latest only"; VERSION=""; }
         echo "==> Building ${REF}"
         podman image exists "{{container_image}}" || podman pull "{{container_image}}"
-        podman run --rm --privileged \
+        podman run --rm --privileged --name "jorgehub-${APP}-build" \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
           "{{container_image}}" \
@@ -297,7 +327,7 @@ loop app="ghostty":
             --repo=.ostree-repo \
             .build-dir "${MANIFEST}"
         rm -rf "${OCI_DIR}"
-        podman run --rm --privileged \
+        podman run --rm --privileged --name "jorgehub-${APP}-bundle" \
           -v "$(pwd):/workspace:z" -w /workspace \
           -e SOURCE_DATE_EPOCH=0 \
           "{{container_image}}" \
@@ -316,17 +346,17 @@ loop app="ghostty":
     IMAGE_ID=$(just _apply-oci-labels "${IMAGE_ID}" "${VERSION:-}" "${URL:-}" "${RELEASE_DESC}")
 
     # 2. Ensure chunkah image is cached
-    podman image exists "quay.io/jlebon/chunkah:v0.2.0" || podman pull "quay.io/jlebon/chunkah:v0.2.0"
+    podman image exists "{{chunkah_image}}" || podman pull "{{chunkah_image}}"
 
     # 3. Capture container config for chunkah (export before assign for set -euo pipefail)
     export CHUNKAH_CONFIG_STR
     CHUNKAH_CONFIG_STR=$(podman inspect "${IMAGE_ID}" | jq -c '.[0]')
 
     # 4. Run chunkah via image-mount — outputs uncompressed OCI archive to stdout
-    podman run --rm \
+    podman run --rm --name "jorgehub-${APP}-chunkah" \
       --mount=type=image,src="${IMAGE_ID}",dest=/chunkah \
       -e CHUNKAH_CONFIG_STR \
-      quay.io/jlebon/chunkah:v0.2.0 build \
+      "{{chunkah_image}}" build \
       > "/tmp/${APP}-chunked.ociarchive"
 
     # 5. Load chunked archive — anchor grep to "Loaded image:" line (not blob sha)
