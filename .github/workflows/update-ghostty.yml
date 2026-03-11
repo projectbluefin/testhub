@@ -63,7 +63,7 @@ jobs:
           git checkout -b "${{ steps.update.outputs.branch }}"
           git add flatpaks/ghostty/manifest.yaml flatpaks/ghostty/zig-packages.json flatpaks/ghostty/dependencies.yml
           git commit -m "chore(ghostty): update to ${{ steps.check.outputs.latest_tag }}"
-          git push origin "${{ steps.update.outputs.branch }}"
+          git push --force-with-lease origin "${{ steps.update.outputs.branch }}"
           gh pr create \
             --title "chore(ghostty): update to ${{ steps.check.outputs.latest_tag }}" \
             --body "Automated update: ghostty ${{ steps.check.outputs.current }} → ${{ steps.check.outputs.latest }}" \

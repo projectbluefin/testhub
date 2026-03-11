@@ -69,7 +69,7 @@ jobs:
           git checkout -b "${{ steps.update.outputs.branch }}"
           git add flatpaks/lmstudio/manifest.yaml
           git commit -m "chore(lmstudio): update to ${{ steps.check.outputs.latest_full }}"
-          git push origin "${{ steps.update.outputs.branch }}"
+          git push --force-with-lease origin "${{ steps.update.outputs.branch }}"
           gh pr create \
             --title "chore(lmstudio): update to ${{ steps.check.outputs.latest_full }}" \
             --body "Automated update: LM Studio ${{ steps.check.outputs.current }} → ${{ steps.check.outputs.latest_app }}" \

@@ -65,7 +65,7 @@ jobs:
           git checkout -b "${{ steps.update.outputs.branch }}"
           git add flatpaks/firefox-nightly/manifest.yaml
           git commit -m "chore(firefox-nightly): update to ${{ steps.check.outputs.latest }}"
-          git push origin "${{ steps.update.outputs.branch }}"
+          git push --force-with-lease origin "${{ steps.update.outputs.branch }}"
           gh pr create \
             --title "chore(firefox-nightly): update to ${{ steps.check.outputs.latest }}" \
             --body "Automated update: Firefox Nightly ${{ steps.check.outputs.latest }}" \
