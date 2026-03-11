@@ -113,6 +113,20 @@ Loop is not complete until `flatpak install` succeeds and digest matches.
 ALL flatpak operations (install, inspect, bundle extraction, `find` in
 `~/.local/share/flatpak`) must run inside such a container — never on the host.
 
+## New app CI requirement
+
+When adding a new app (new `flatpaks/<app>/` directory), the task is NOT complete
+until CI passes end-to-end:
+
+1. Push the branch to origin
+2. Trigger a manual CI run: `gh workflow run build.yml -f app=<app>`
+   (or push to main if the workflow triggers on push)
+3. Wait for CI to pass — check with `gh run watch`
+4. Only after CI passes and the image is pushed to ghcr.io, close the GitHub issue
+
+Never close a "new app" issue based solely on files being committed. The Flatpak
+must be buildable and installable before the issue is closed.
+
 ## Simplicity rule
 
 Tools available in gnome-49 and ubuntu-24.04 runners: `yq`, `jq`, `python3`, `curl`,
