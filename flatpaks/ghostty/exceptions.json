@@ -1,3 +1,7 @@
 {
-    "com.mitchellh.ghostty": ["appid-filename-mismatch"]
+    "com.mitchellh.ghostty": [
+        "appid-filename-mismatch",
+        "finish-args-unnecessary-xdg-config-ghostty-ro-access",
+        "finish-args-flatpak-spawn-access"
+    ]
 }
