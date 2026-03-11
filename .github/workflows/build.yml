@@ -60,23 +60,19 @@ jobs:
   build:
     needs: detect
     if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
-    runs-on: ubuntu-24.04
-    # When aarch64 is enabled: runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
-    # and add runner: ubuntu-24.04 (or ubuntu-24.04-arm) to each matrix include entry
+    runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         app: ${{ fromJson(needs.detect.outputs.apps) }}
-        arch: [x86_64]
-        # aarch64 stub — uncomment when ready to enable QEMU builds:
-        # include:
-        #   - arch: aarch64
-        #     runner: ubuntu-24.04        # QEMU on x86_64 host
-        # Add to "Push to ghcr.io" step when enabling:
-        #   - name: Set up QEMU
-        #     uses: docker/setup-qemu-action@<SHA> # add before build step
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
       options: --privileged
@@ -123,7 +119,7 @@ jobs:
           build-bundle: false
           upload-artifact: false
           cache: true
-          cache-key: flatpak-${{ matrix.app }}-${{ matrix.arch }}
+          cache-key: flatpak-${{ matrix.app }}-${{ matrix.arch }}-${{ hashFiles(format('flatpaks/{0}/manifest.yaml', matrix.app)) }}
           branch: ${{ steps.manifest-meta.outputs.branch }}
 
       - name: Export OCI bundle (flatpak-builder path)
@@ -194,8 +190,7 @@ jobs:
   push:
     needs: [detect, build]
     if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
-    runs-on: ubuntu-24.04
-    # When aarch64 is enabled: runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       packages: write
       contents: write
@@ -204,8 +199,12 @@ jobs:
       fail-fast: false
       matrix:
         app: ${{ fromJson(needs.detect.outputs.apps) }}
-        arch: [x86_64]
-        # aarch64 stub — see build job comment
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # v9
         with:
@@ -505,7 +504,7 @@ jobs:
   cleanup:
     needs: [detect, push]
     if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       packages: write
       contents: read
@@ -513,7 +512,12 @@ jobs:
       fail-fast: false
       matrix:
         app: ${{ fromJson(needs.detect.outputs.apps) }}
-        arch: [x86_64]
+        arch: [x86_64, aarch64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
