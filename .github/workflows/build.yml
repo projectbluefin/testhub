@@ -342,6 +342,15 @@ jobs:
           buildah rm "${CTR}"
           echo "==> OCI labels applied"
 
+          # Per-app max-layers tuning: read from x-chunkah-max-layers (manifest.yaml)
+          # or chunkah-max-layers (release.yaml), defaulting to 16.
+          if [[ -f "flatpaks/${APP}/release.yaml" ]]; then
+            MAX_LAYERS=$(yq '.["chunkah-max-layers"] // 16' "flatpaks/${APP}/release.yaml")
+          else
+            MAX_LAYERS=$(yq '.["x-chunkah-max-layers"] // 16' "flatpaks/${APP}/manifest.yaml")
+          fi
+          echo "==> MAX_LAYERS=${MAX_LAYERS}"
+
           # podman inspect produces the array format chunkah's parse_config accepts.
           # Must use LABELED (has labels) not INPUT (pre-label image).
           export CHUNKAH_CONFIG_STR
@@ -359,6 +368,7 @@ jobs:
             -v "$(pwd):/run/src" \
             --security-opt=label=disable \
             --build-arg CHUNKAH_CONFIG_STR \
+            --build-arg "CHUNKAH_ARGS=--max-layers ${MAX_LAYERS}" \
             "${CHUNKAH_SPLITTER}"
 
           # Verify labels survived the round-trip
