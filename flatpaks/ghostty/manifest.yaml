@@ -43,7 +43,7 @@ modules:
         --prefix /app
         --search-prefix /app
         --system $PWD/vendor/p
-      - install -Dm644 /run/build/com.mitchellh.ghostty/com.mitchellh.ghostty.metainfo.xml /app/share/metainfo/com.mitchellh.ghostty.metainfo.xml
+      - install -Dm644 com.mitchellh.ghostty.metainfo.xml /app/share/metainfo/com.mitchellh.ghostty.metainfo.xml
     sources:
       - type: archive
         x-version: "1.3.0"

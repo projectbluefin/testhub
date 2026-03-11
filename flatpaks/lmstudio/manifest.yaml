@@ -30,9 +30,9 @@ modules:
       - tar xf data.tar.xz
       # Copy app files — renamed from "opt/LM Studio/" (space) to "opt/LM-Studio/" (hyphen) in 0.4.7
       - cp -a "opt/LM-Studio/." /app/lm-studio/
-      # Install icon — deb ships a PNG at usr/share/icons/hicolor/0x0/apps/lm-studio.png
-      # (the 0x0 dir name is upstream's; it's a raster PNG despite the path)
-      - install -Dm644 usr/share/icons/hicolor/0x0/apps/lm-studio.png /app/share/icons/hicolor/512x512/apps/ai.lmstudio.LMStudio.png
+      # Icon omitted: deb ships 1024x1024 PNG; flatpak-builder rejects >512x512 at export.
+      # convert (ImageMagick) not in gnome-49; GdkPixbuf fails (glycin sandbox); resize tool TBD.
+      # See AGENTS.md "lmstudio icon" note for open problem details.
       # Install desktop file
       - install -Dm644 usr/share/applications/lm-studio.desktop /app/share/applications/ai.lmstudio.LMStudio.desktop
       # Fix desktop file: update Exec, Icon, and remove non-standard lowercase 'category' key
@@ -43,7 +43,7 @@ modules:
       - install -d /app/bin
       - printf '#!/bin/sh\nexec /app/lm-studio/lm-studio --no-sandbox "$@"\n' > /app/bin/lm-studio
       - chmod 755 /app/bin/lm-studio
-      - install -Dm644 /run/build/ai.lmstudio.LMStudio/ai.lmstudio.LMStudio.metainfo.xml /app/share/metainfo/ai.lmstudio.LMStudio.metainfo.xml
+      - install -Dm644 ai.lmstudio.LMStudio.metainfo.xml /app/share/metainfo/ai.lmstudio.LMStudio.metainfo.xml
     sources:
       - type: file
         url: https://installers.lmstudio.ai/linux/x64/0.4.7-2/LM-Studio-0.4.7-2-x64.deb
