@@ -57,3 +57,4 @@ modules:
 
       - type: file
         path: ai.lmstudio.LMStudio.metainfo.xml
+
