@@ -104,6 +104,9 @@ Rules:
   flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed digest
   ```
   The loop is not complete until `flatpak install` succeeds and `flatpak info` shows the correct digest.
+  **ALL flatpak operations (install, inspect, bundle extraction, `find` in `~/.local/share/flatpak`,
+  or any investigation of bundle contents) must run inside the devaipod container — never on the
+  host.** "Just looking" does not exempt an operation from this rule.
 - **Source URL convention for manifest.yaml apps:** Always use immutable versioned tag archive URLs
   (e.g. `https://github.com/ghostty-org/ghostty/archive/refs/tags/v1.3.0.tar.gz`). Never use
   rolling `tip`, `latest`, or branch archive URLs — the tarball content and sha256 change without
