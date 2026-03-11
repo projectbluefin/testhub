@@ -1,7 +1,7 @@
 app-id: io.github.block.Goose
-version: v1.27.1
-url: https://github.com/block/goose/releases/download/v1.27.1/io.github.block.Goose_stable_x86_64.flatpak
-sha256: ad35d5c52e8a081294dbbf49b81dfc57beefe7054c5357748ef9617bc3399f8d
+version: v1.27.2
+url: https://github.com/block/goose/releases/download/v1.27.2/io.github.block.Goose_stable_x86_64.flatpak
+sha256: f74d47cc61bb0e6d1fc41327fcf3b359408158c24216d96782b2854cb3599765
 title: Goose
 description: Goose AI agent - Flatpak repack
 license: Apache-2.0
