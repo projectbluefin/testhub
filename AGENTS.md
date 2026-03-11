@@ -123,6 +123,27 @@ Rules:
   Always manually verify dedup after any rebase of index/static changes. **Session hygiene:**
   session-end must commit or discard any pending gh-pages worktree changes — never leave the
   worktree in a dirty or detached HEAD state between sessions.
+- **hg.mozilla.org json-log API:** The JSON key for changesets is `changesets`, not `entries`.
+  Correct python3 extraction: `python3 -c "import sys,json; data=json.load(sys.stdin); print(data['changesets'][0]['node'])"`.
+  Also: hg.mozilla.org redirects to hg-edge — always pass `-L` to curl when fetching from hg.mozilla.org.
+- **bundle-repack apps cannot receive metainfo injection at build time.** The `release.yaml` pipeline
+  downloads a pre-built upstream `.flatpak` bundle and repackages it as OCI — there is no mechanism
+  to inject source-side files (e.g. `metainfo.xml`) into the bundle during this process. Metainfo
+  XML files committed to `flatpaks/<app>/` are source-side assets only; they will not appear in the
+  installed Flatpak unless the upstream bundle already includes them. This is a known limitation of
+  the bundle-repack path. To ship metainfo for a bundle-repack app, the upstream `.flatpak` must
+  include it, or the app must be migrated to the `manifest.yaml` (flatpak-builder) path.
+- **LM Studio metainfo release date placeholder:** `flatpaks/lmstudio/metainfo.xml` uses a
+  placeholder release date (`2025-03-01` for v0.4.7) because lmstudio.ai/changelog only listed
+  entries up to v0.4.6 as of 2026-03-11. Update the date when the upstream changelog is updated.
+- **lmstudio icon path needs build-time verification:** The expected path
+  `usr/share/icons/hicolor/0x0/apps/lm-studio.png` follows Electron deb conventions but has not
+  been confirmed against the actual bundle. If wrong, the install will fail silently or error.
+  Verify during the first `just loop lmstudio` run; add a build-time check if the path is fragile.
+- **firefox-nightly aarch64 sha256 is intentionally rolling-stale.** The nightly manifest uses
+  `latest-mozilla-central` rolling URLs — the sha256 for aarch64 becomes stale daily by design.
+  This is acceptable for a nightly-tracking app. Do not attempt to pin sha256 for nightly builds;
+  document in the manifest comment that the aarch64 sha256 must be refreshed on each build loop.
 
 ## Simplicity Rule
 
