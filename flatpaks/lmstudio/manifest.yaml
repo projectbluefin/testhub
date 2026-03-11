@@ -3,7 +3,7 @@ runtime: org.gnome.Platform
 runtime-version: "49"
 sdk: org.gnome.Sdk
 default-branch: stable
-x-version: "0.4.6"
+x-version: "0.4.7"
 command: lm-studio
 finish-args:
   # GPU compute for AI inference (CUDA, ROCm, Vulkan) — device=dri alone is not enough
@@ -20,33 +20,27 @@ finish-args:
   - --talk-name=org.freedesktop.Notifications
   # Allow URL handler (lmstudio:// scheme)
   - --talk-name=org.freedesktop.portal.OpenURI
-
 modules:
   - name: lmstudio
     buildsystem: simple
     build-commands:
       # Extract deb archive
-      - ar x LM-Studio-0.4.6-1-x64.deb
+      - ar x LM-Studio-0.4.7-2-x64.deb
       - tar xf data.tar.xz
-
       # Copy app files — directory name has a space, use shell glob carefully
       - cp -a "opt/LM Studio/." /app/lm-studio/
-
       # Install desktop file
       - install -Dm644 usr/share/applications/lm-studio.desktop /app/share/applications/ai.lmstudio.LMStudio.desktop
-
       # Fix desktop file: update Exec, Icon, and remove non-standard lowercase 'category' key
       - sed -i 's|^Exec=.*|Exec=lm-studio %U|' /app/share/applications/ai.lmstudio.LMStudio.desktop
       - sed -i 's|^Icon=.*|Icon=ai.lmstudio.LMStudio|' /app/share/applications/ai.lmstudio.LMStudio.desktop
       - sed -i '/^category=/Id' /app/share/applications/ai.lmstudio.LMStudio.desktop
-
       # Wrapper script: Electron SUID sandbox is not usable in Flatpak; use --no-sandbox
       - install -d /app/bin
       - printf '#!/bin/sh\nexec /app/lm-studio/lm-studio --no-sandbox "$@"\n' > /app/bin/lm-studio
       - chmod 755 /app/bin/lm-studio
-
     sources:
       - type: file
-        url: https://installers.lmstudio.ai/linux/x64/0.4.6-1/LM-Studio-0.4.6-1-x64.deb
-        sha256: 17cd37b55172c59983f452b4d43d97c39b77e4301444922f7b4696d56be45016
-        dest-filename: LM-Studio-0.4.6-1-x64.deb
+        url: https://installers.lmstudio.ai/linux/x64/0.4.7-2/LM-Studio-0.4.7-2-x64.deb
+        sha256: eab2447932560cb4c889cfabdd680932222e9bc1059306159c155f338f051013
+        dest-filename: LM-Studio-0.4.7-2-x64.deb
