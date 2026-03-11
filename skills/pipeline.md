@@ -138,25 +138,42 @@ The linter expects the manifest filename to match the app-id, e.g. `org.example.
 Every jorgehub app uses `manifest.yaml` — this triggers `appid-filename-mismatch` on every
 manifest.yaml-based app.
 
-**Fix options (pick one):**
+**Fix applied:** Each manifest.yaml-based app has a `flatpaks/<app>/exceptions.json`:
+```json
+{
+    "<app-id>": ["appid-filename-mismatch"]
+}
+```
 
-1. Rename each manifest to `<app-id>.yaml` (upstream-preferred approach; requires updating
-   all Justfile/CI references to the filename)
-2. Pass `--exceptions appid-filename-mismatch` to the linter invocation in `build.yml`
-3. Add a per-app lint exceptions file (`.flatpak-builder-lint.json`) in the app directory
+`build.yml` passes `--exceptions --user-exceptions <file>` when the file exists. This is
+the active approach — do not rename manifests to `<app-id>.yaml`.
 
-Until resolved, any new manifest.yaml-based app will fail lint in CI.
+When adding a new manifest.yaml-based app, create `flatpaks/<app>/exceptions.json` with the
+app's actual app-id suppressing `appid-filename-mismatch`.
 
 ### manifest-unknown-properties (cleanup-commands at module scope)
 
-`cleanup-commands` is a valid field at the top-level manifest, but when placed inside a
-module definition it is flagged as `manifest-unknown-properties`. The correct field at
-module scope is `cleanup` (list of paths), not `cleanup-commands` (list of shell commands).
+`cleanup-commands` is not in the flatpak-builder JSON schema at module scope — using it
+causes `jsonschema-validation-error`. The correct fields at module scope are:
+- `cleanup` — list of file glob patterns to remove after build (NOT shell commands)
+- `build-commands` or `post-install` — for shell commands that run during/after the build
+
+Extension stub directories (e.g. `mkdir -p $FLATPAK_DEST/lib/ffmpeg`) must go in
+`build-commands` or `post-install`, not `cleanup`.
 
 ### finish-args-unnecessary-xdg-config-gtk-3.0-ro-access (error, not warning)
 
-`--filesystem=xdg-config/gtk-3.0:ro` in `finish-args` is flagged as an error (the linter
-considers it unnecessary). Remove the permission or add an exceptions entry.
+`--filesystem=xdg-config/gtk-3.0:ro` in `finish-args` is flagged as a hard error (the
+linter considers it unnecessary). Remove the permission or add it to `exceptions.json`.
+
+### Icon sha256 values in manifests
+
+When pinning per-size icons from hg-edge.mozilla.org, verify each sha256 independently:
+```bash
+curl -sL "<url>" | sha256sum
+```
+Do not copy-paste sha256 values across icon sizes — the values are not interchangeable and
+a swap causes a silent build failure (download succeeds but verification fails).
 
 ### Checking errors vs exceptions
 
@@ -167,7 +184,7 @@ flatpak-builder-lint manifest "flatpaks/<app>/manifest.yaml"
 
 To run with exceptions (suppresses specific named checks):
 ```bash
-flatpak-builder-lint --exceptions manifest "flatpaks/<app>/manifest.yaml"
+flatpak-builder-lint --exceptions --user-exceptions "flatpaks/<app>/exceptions.json" manifest "flatpaks/<app>/manifest.yaml"
 ```
 
 ## Simplicity rule
