@@ -19,7 +19,6 @@ finish-args:
   - --socket=pcsc
   - --socket=cups
   - --device=dri
-  - --filesystem=xdg-config/gtk-3.0:ro
   - --filesystem=xdg-download
   - --filesystem=xdg-run/speech-dispatcher:ro
   - --persist=.thunderbird-nightly
@@ -58,7 +57,6 @@ modules:
       - install -D -m 644 icons/64.png /app/share/icons/hicolor/64x64/apps/org.mozilla.Thunderbird.png
       - install -D -m 644 icons/128.png /app/share/icons/hicolor/128x128/apps/org.mozilla.Thunderbird.png
       - install -D -m 644 icons/256.png /app/share/icons/hicolor/256x256/apps/org.mozilla.Thunderbird.png
-    cleanup-commands:
       - mkdir -p ${FLATPAK_DEST}/lib/ffmpeg
       - mkdir -p ${FLATPAK_DEST}/share/runtime/langpack
     sources:

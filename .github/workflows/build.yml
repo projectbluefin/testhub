@@ -149,7 +149,12 @@ jobs:
         run: |
           # flatpak-builder-lint is available directly in the gnome-49 container at /app/bin/flatpak-builder-lint
           # Runs before the build to catch manifest issues early. Fails the job on errors.
-          flatpak-builder-lint manifest "flatpaks/${{ matrix.app }}/manifest.yaml"
+          EXCEPTIONS_FILE="flatpaks/${{ matrix.app }}/exceptions.json"
+          if [ -f "${EXCEPTIONS_FILE}" ]; then
+            flatpak-builder-lint --exceptions --user-exceptions "${EXCEPTIONS_FILE}" manifest "flatpaks/${{ matrix.app }}/manifest.yaml"
+          else
+            flatpak-builder-lint manifest "flatpaks/${{ matrix.app }}/manifest.yaml"
+          fi
 
       - name: Build with flatpak-builder (cached)
         if: steps.detect-path.outputs.mode == 'flatpak-builder' && steps.detect-path.outputs.skip != 'true'
