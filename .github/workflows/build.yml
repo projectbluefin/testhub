@@ -341,9 +341,10 @@ jobs:
         uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
 
       - name: Sign image with cosign
+        env:
+          REGISTRY_AUTH_FILE: ${{ env.HOME }}/.config/containers/auth.json
         run: |
           cosign sign --yes \
-            --registry-token "${{ secrets.GITHUB_TOKEN }}" \
             ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ env.DIGEST }}
 
       - name: Generate SBOM
@@ -355,9 +356,10 @@ jobs:
           artifact-name: sbom-${{ matrix.app }}-${{ matrix.arch }}
 
       - name: Attest SBOM to registry
+        env:
+          REGISTRY_AUTH_FILE: ${{ env.HOME }}/.config/containers/auth.json
         run: |
           cosign attest --yes \
-            --registry-token "${{ secrets.GITHUB_TOKEN }}" \
             --predicate sbom-${{ matrix.app }}.spdx.json \
             --type spdxjson \
             ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ env.DIGEST }}
