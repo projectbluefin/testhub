@@ -51,6 +51,11 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             skopeo login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
 
+      - name: Sync gh-pages before writing
+        run: |
+          cd pages
+          git fetch origin gh-pages && git rebase origin/gh-pages
+
       - name: Update index for each app and arch
         run: |
           cd pages
@@ -77,7 +82,6 @@ jobs:
           cd pages
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin gh-pages && git rebase origin/gh-pages
           git add index/static
           if git diff --cached --quiet; then
             echo "index unchanged, skipping commit"
