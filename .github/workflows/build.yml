@@ -273,6 +273,7 @@ jobs:
         if: failure() && steps.detect-path.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           APP="${{ matrix.app }}"
           BRANCH="raptor/runtime-${APP}"
@@ -292,7 +293,7 @@ jobs:
           fi
 
           # Determine the source branch (PR builds expose head_ref; push builds expose ref)
-          SOURCE_BRANCH="${{ github.head_ref }}"
+          SOURCE_BRANCH="${HEAD_REF}"
           if [[ -z "${SOURCE_BRANCH}" ]]; then
             SOURCE_BRANCH="${{ github.ref_name }}"
           fi
