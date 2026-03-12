@@ -1,3 +1,19 @@
+# CI environment reference
+# ─────────────────────────────────────────────────────────────────────────────
+# compile-oci and e2e-install run INSIDE gnome-49 container:
+#   ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+#   Has: flatpak-builder, yq (after install-tools-yq), python3, ostree,
+#        buildah, flatpak-builder-lint, flatpak, skopeo, just (after install)
+#
+# sign-and-push, publish-manifest-list, annotate-packages run on BARE ubuntu-24.04:
+#   Has: podman+buildah (via Homebrew/install-tools-podman), cosign (via action),
+#        oras (via download/install-tools-oras), skopeo, gh, just
+#
+# Justfile is the single source of truth for all inline shell logic.
+# CI-only concerns kept in YAML: staging tags, layer cache (actions/cache),
+# STEP_SUMMARY, SBOM (anchore/sbom-action), attestation, cosign sign/verify,
+# digest artifact upload/download (uses github.run_id + GITHUB_TOKEN).
+# ─────────────────────────────────────────────────────────────────────────────
 name: Build → Sign → Publish Flatpak OCI
 run-name: "[${{ github.ref_name }}] ${{ inputs.app || 'all apps' }}: build → sign → publish"
 
@@ -89,44 +105,21 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install yq
-        run: |
-          ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-          wget "https://github.com/mikefarah/yq/releases/download/v4.52.4/yq_linux_${ARCH}" \
-            -O /usr/local/bin/yq && chmod +x /usr/local/bin/yq
+        run: just install-tools-yq
 
       - name: Detect build path and arch support
         id: detect-path
         run: |
           if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
             echo "mode=bundle-repack" >> "$GITHUB_OUTPUT"
-            # Check arches field: if set, skip unsupported arches
-            ARCHES=$(yq '.arches // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            if [[ -n "${ARCHES}" && "${ARCHES}" != "null" ]]; then
-              if ! echo "${ARCHES}" | grep -q "${{ matrix.arch }}"; then
-                echo "==> Skipping ${{ matrix.app }} on ${{ matrix.arch }} (not in arches: ${ARCHES})"
-                echo "skip=true" >> "$GITHUB_OUTPUT"
-              fi
-            fi
           elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
             echo "mode=flatpak-builder" >> "$GITHUB_OUTPUT"
-            # Check x-arches field for manifest.yaml apps that are arch-restricted
-            ARCHES=$(yq '.x-arches // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ -n "${ARCHES}" && "${ARCHES}" != "null" ]]; then
-              if ! echo "${ARCHES}" | grep -q "${{ matrix.arch }}"; then
-                echo "==> Skipping ${{ matrix.app }} on ${{ matrix.arch }} (not in x-arches: ${ARCHES})"
-                echo "skip=true" >> "$GITHUB_OUTPUT"
-              fi
-            fi
-            # Skip soft-disabled apps (auto-imported and retired via sync-runtime-issues)
-            DISABLED=$(yq '.["x-disabled"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ "${DISABLED}" == "true" ]]; then
-              echo "==> Skipping ${{ matrix.app }} (x-disabled: true)"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            fi
           else
             echo "ERROR: no manifest.yaml or release.yaml in flatpaks/${{ matrix.app }}/" >&2
             exit 1
           fi
+          SKIP=$(just _skip-arch "${{ matrix.app }}" "${{ matrix.arch }}")
+          echo "skip=${SKIP}" >> "$GITHUB_OUTPUT"
 
       # ── flatpak-builder path (e.g. ghostty) ──────────────────────────────
       # The v6 action:
@@ -207,59 +200,22 @@ jobs:
       - name: Export OCI bundle (flatpak-builder path)
         if: steps.detect-path.outputs.mode == 'flatpak-builder' && steps.detect-path.outputs.skip != 'true'
         run: |
-          APP_ID=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('flatpaks/${{ matrix.app }}/manifest.yaml')); print(d['app-id'])")
+          APP_ID=$(just metadata "${{ matrix.app }}" app-id)
           [[ -n "${APP_ID}" && "${APP_ID}" != "null" ]] || { echo "ERROR: could not determine app-id" >&2; exit 1; }
           BRANCH="${{ steps.manifest-meta.outputs.branch }}"
           echo "==> Exporting OCI for ${APP_ID} (arch: ${{ matrix.arch }}, branch: ${BRANCH})"
-          # OSTree repo is at ./repo (action hardcodes localRepoName='repo')
-          # NAME = app-id only (not a full ref path); BRANCH from manifest default-branch; --arch sets target arch
-          # Do NOT pass --override-source-date-epoch — that flag belongs to flatpak-builder only
-          # SOURCE_DATE_EPOCH=0 env (set at job level) is sufficient for build-bundle
           flatpak build-bundle --oci --arch="${{ matrix.arch }}" repo "${{ matrix.app }}.oci" "${APP_ID}" "${BRANCH}"
 
       # ── Bundle repack path (e.g. goose) ──────────────────────────────────
       # Downloads upstream .flatpak, verifies sha256, imports into OSTree, exports OCI.
       # No flatpak-builder invocation — upstream build is trusted as-is.
-      - name: Download and verify upstream bundle
+      - name: Repack upstream bundle (bundle-repack path)
         if: steps.detect-path.outputs.mode == 'bundle-repack' && steps.detect-path.outputs.skip != 'true'
         run: |
-          DESC="flatpaks/${{ matrix.app }}/release.yaml"
-          APP_ID=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('${DESC}')); print(d['app-id'])")
-          VERSION=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('${DESC}')); print(d['version'])")
-          URL=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('${DESC}')); print(d['url'])")
-          EXPECTED_SHA=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('${DESC}')); print(d['sha256'])")
-          [[ -n "${APP_ID}" && "${APP_ID}" != "null" \
-          && -n "${VERSION}" && "${VERSION}" != "null" \
-          && -n "${URL}" && "${URL}" != "null" \
-          && -n "${EXPECTED_SHA}" && "${EXPECTED_SHA}" != "null" ]] \
-            || { echo "ERROR: release.yaml missing required fields" >&2; exit 1; }
-          echo "APP_ID=${APP_ID}" >> "$GITHUB_ENV"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-          echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"
-          BUNDLE_FILE="/tmp/${{ matrix.app }}-${VERSION}.flatpak"
-          echo "BUNDLE_FILE=${BUNDLE_FILE}" >> "$GITHUB_ENV"
-          echo "==> Downloading ${URL}"
-          curl -fsSL -o "${BUNDLE_FILE}" "${URL}"
-          ACTUAL_SHA=$(sha256sum "${BUNDLE_FILE}" | cut -d' ' -f1)
-          if [[ "${ACTUAL_SHA}" != "${EXPECTED_SHA}" ]]; then
-            echo "ERROR: sha256 mismatch" >&2
-            echo "  expected: ${EXPECTED_SHA}" >&2
-            echo "  actual:   ${ACTUAL_SHA}" >&2
-            exit 1
-          fi
-          echo "==> sha256 OK: ${ACTUAL_SHA}"
-
-      - name: Import bundle and export OCI (bundle-repack path)
-        if: steps.detect-path.outputs.mode == 'bundle-repack' && steps.detect-path.outputs.skip != 'true'
-        run: |
-          ARCH="${{ matrix.arch }}"
-          REF="app/${APP_ID}/${ARCH}/stable"
-          ostree init --mode=archive-z2 --repo=repo
-          echo "==> Importing ${BUNDLE_FILE} → OSTree ref ${REF}"
-          # --ref: override embedded ref to match our standard naming
-          flatpak build-import-bundle --ref="${REF}" repo "${BUNDLE_FILE}"
-          echo "==> Exporting OCI bundle"
-          flatpak build-bundle --oci --arch="${ARCH}" repo "${{ matrix.app }}.oci" "${APP_ID}" stable
+          # _repack writes to .APP.oci; symlink to APP.oci for upload-artifact compatibility
+          OCI_DIR=$(just _repack "${{ matrix.app }}" "${{ matrix.arch }}")
+          [[ "${OCI_DIR}" == "SKIP" ]] && { echo "==> SKIP: arch not supported"; exit 0; }
+          ln -sfn "${OCI_DIR}" "${{ matrix.app }}.oci"
 
       - name: Upload OCI artifact
         if: steps.detect-path.outputs.skip != 'true'
@@ -346,8 +302,6 @@ jobs:
           fi
 
   # ── Build gate (required check for merge queue) ───────────────────────────
-  # Single stable job name that requires all build matrix entries to pass.
-  # This is what the branch ruleset requires as a status check.
   build-complete:
     needs: [diff-changed-apps, compile-oci]
     if: always() && needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != ''
@@ -382,23 +336,16 @@ jobs:
           - arch: aarch64
             runner: ubuntu-24.04-arm
     steps:
-      # Disabled: sign-and-push only downloads artifacts + runs podman/buildah/push.
-      # That workload fits in the default ~29 GB free on ubuntu-24.04 without cleanup.
-      # Re-enable if disk pressure is observed in this job.
-      # - uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # v9
-      #   with:
-      #     extra-squeeze: "true"
-
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Install podman 5.x via Homebrew
+      - name: Install just
         run: |
-          /home/linuxbrew/.linuxbrew/bin/brew install podman
-          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
-          # Point podman to Homebrew's crun (system /usr/bin/crun is too old on ubuntu-24.04).
-          mkdir -p ~/.config/containers
-          printf '[engine]\nruntime = "/home/linuxbrew/.linuxbrew/bin/crun"\n' \
-            > ~/.config/containers/containers.conf
+          ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/')
+          curl -fsSL "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-${ARCH}-unknown-linux-musl.tar.gz" \
+            | tar -xz -C /usr/local/bin just
+
+      - name: Install podman 5.x via Homebrew
+        run: just install-tools-podman
 
       - name: Enable user namespaces for rootless podman
         run: |
@@ -410,57 +357,19 @@ jobs:
 
       - name: Check arch support
         id: arch-check
-        run: |
-          # Mirror the arch-exclusion logic from the build job.
-          # release.yaml apps: check arches field.
-          # manifest.yaml apps: check x-arches field.
-          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            ARCHES=$(yq '.arches // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            if [[ -n "${ARCHES}" && "${ARCHES}" != "null" ]]; then
-              if ! echo "${ARCHES}" | grep -q "${{ matrix.arch }}"; then
-                echo "==> Skipping ${{ matrix.app }} push on ${{ matrix.arch }} (not in arches: ${ARCHES})"
-                echo "skip=true" >> "$GITHUB_OUTPUT"
-              fi
-            fi
-          elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
-            ARCHES=$(yq '.x-arches // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ -n "${ARCHES}" && "${ARCHES}" != "null" ]]; then
-              if ! echo "${ARCHES}" | grep -q "${{ matrix.arch }}"; then
-                echo "==> Skipping ${{ matrix.app }} push on ${{ matrix.arch }} (not in x-arches: ${ARCHES})"
-                echo "skip=true" >> "$GITHUB_OUTPUT"
-              fi
-            fi
-            DISABLED=$(yq '.["x-disabled"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ "${DISABLED}" == "true" ]]; then
-              echo "==> Skipping ${{ matrix.app }} push (x-disabled: true)"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            fi
-          fi
+        run: echo "skip=$(just _skip-arch '${{ matrix.app }}' '${{ matrix.arch }}')" >> "$GITHUB_OUTPUT"
 
       - name: Read release metadata
         if: steps.arch-check.outputs.skip != 'true'
         run: |
-          # GITHUB_ENV is job-scoped — re-derive version here from source descriptors.
-          # Bundle-repack: read version + url from release.yaml.
-          # Flatpak-builder: read x-version from manifest.yaml (x- prefix is ignored by flatpak-builder).
-          # If neither supplies a version, only :latest is pushed (ghostty tip, etc.).
-          DESC="flatpaks/${{ matrix.app }}/release.yaml"
-          MANIFEST="flatpaks/${{ matrix.app }}/manifest.yaml"
-          if [[ -f "${DESC}" ]]; then
-            VERSION=$(yq '.version' "${DESC}")
-            URL=$(yq '.url' "${DESC}")
-            echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-            echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"
-            echo "==> Bundle-repack: VERSION=${VERSION}"
-          elif [[ -f "${MANIFEST}" ]]; then
-            X_VERSION=$(yq '.x-version // ""' "${MANIFEST}")
-            if [[ -n "${X_VERSION}" && "${X_VERSION}" != "null" ]]; then
-              echo "VERSION=${X_VERSION}" >> "$GITHUB_ENV"
-              echo "==> Flatpak-builder: VERSION=${X_VERSION}"
-            else
-              echo "==> Flatpak-builder: no x-version in manifest.yaml — only :latest will be pushed"
-            fi
-          fi
+          VERSION=$(just metadata '${{ matrix.app }}' version 2>/dev/null || echo "")
+          [[ "${VERSION}" == "null" ]] && VERSION=""
+          [[ -n "${VERSION}" ]] && echo "VERSION=${VERSION}" >> "$GITHUB_ENV" \
+            && echo "==> VERSION=${VERSION}" \
+            || echo "==> No version — only :latest will be pushed"
+          URL=$(just metadata '${{ matrix.app }}' url 2>/dev/null || echo "")
+          [[ "${URL}" == "null" ]] && URL=""
+          [[ -n "${URL}" ]] && echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"
 
       - name: Download OCI artifact
         if: steps.arch-check.outputs.skip != 'true'
@@ -492,57 +401,22 @@ jobs:
           IMAGE_ID=$(podman pull --quiet "oci:./${APP}.oci")
           podman tag "${IMAGE_ID}" "${INPUT}"
 
-          # Apply OCI labels via podman build --from (overrides FROM without adding a
-          # content layer — only config metadata changes, identical to buildah from/config/commit/rm).
-          CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          LABEL_ARGS=(
-            --label "org.opencontainers.image.version=${VERSION:-}"
-            --label "org.opencontainers.image.source=${UPSTREAM_URL:-}"
-            --label "org.opencontainers.image.created=${CREATED}"
-            --label "org.opencontainers.image.vendor=${{ github.repository_owner }}"
-            --label "org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}"
-            --label "org.opencontainers.image.revision=${{ github.sha }}"
-          )
-          # title/description/license only exist in release.yaml (bundle-repack path)
-          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            TITLE=$(yq '.title // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            DESCRIPTION=$(yq '.description // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            LICENSE=$(yq '.license // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${TITLE}" && "${TITLE}" != "null" ]] && LABEL_ARGS+=(--label "org.opencontainers.image.title=${TITLE}") || true
-            [[ -n "${DESCRIPTION}" && "${DESCRIPTION}" != "null" ]] && LABEL_ARGS+=(--label "org.opencontainers.image.description=${DESCRIPTION}") || true
-            [[ -n "${LICENSE}" && "${LICENSE}" != "null" ]] && LABEL_ARGS+=(--label "org.opencontainers.image.licenses=${LICENSE}") || true
-          fi
-          podman build \
-            --from "${INPUT}" \
-            "${LABEL_ARGS[@]}" \
-            --no-cache \
-            -t "${LABELED}" \
-            -f /dev/stdin <<< 'FROM placeholder'
-          echo "==> OCI labels applied"
+          LABELED=$(just _apply-oci-labels "${IMAGE_ID}" "${VERSION:-}" "${UPSTREAM_URL:-}" "flatpaks/${APP}/release.yaml")
+          echo "==> OCI labels applied: ${LABELED}"
 
-          # Per-app max-layers tuning: read from x-chunkah-max-layers (manifest.yaml)
-          # or chunkah-max-layers (release.yaml), defaulting to 16.
-          if [[ -f "flatpaks/${APP}/release.yaml" ]]; then
-            MAX_LAYERS=$(yq '.["chunkah-max-layers"] // 16' "flatpaks/${APP}/release.yaml")
-          else
-            MAX_LAYERS=$(yq '.["x-chunkah-max-layers"] // 16' "flatpaks/${APP}/manifest.yaml")
-          fi
+          # Per-app max-layers tuning; defaults to 16
+          MAX_LAYERS=$(just metadata "${APP}" chunkah-max-layers 2>/dev/null || echo "16")
+          [[ -z "${MAX_LAYERS}" || "${MAX_LAYERS}" == "null" ]] && MAX_LAYERS="16"
           echo "==> MAX_LAYERS=${MAX_LAYERS}"
 
-          # Per-app chunkah skip: x-skip-chunkah: true in manifest.yaml bypasses chunkah
-          # entirely (CHUNKED == LABELED). Use for small apps with no rpmdb and no files
-          # >= 1MB — chunkah fails with "no supported component repo found in rootfs".
-          SKIP_CHUNKAH="false"
-          if [[ -f "flatpaks/${APP}/manifest.yaml" ]]; then
-            SKIP_CHUNKAH=$(yq '.["x-skip-chunkah"] // false' "flatpaks/${APP}/manifest.yaml")
-          fi
+          # Per-app chunkah skip: skip-chunkah: true bypasses chunkah entirely
+          SKIP_CHUNKAH=$(just metadata "${APP}" skip-chunkah 2>/dev/null || echo "false")
+          [[ -z "${SKIP_CHUNKAH}" || "${SKIP_CHUNKAH}" == "null" ]] && SKIP_CHUNKAH="false"
 
           if [[ "${SKIP_CHUNKAH}" == "true" ]]; then
             echo "==> Skipping chunkah (x-skip-chunkah: true in manifest.yaml)"
             CHUNKED="${LABELED}"
           else
-            # podman inspect produces the array format chunkah's parse_config accepts.
-            # Must use LABELED (has labels) not INPUT (pre-label image).
             export CHUNKAH_CONFIG_STR
             CHUNKAH_CONFIG_STR=$(podman inspect "${LABELED}" | jq -c '.[0]')
             echo "==> Running chunkah"
@@ -556,8 +430,6 @@ jobs:
             podman tag "${CHUNKED_ID}" "${CHUNKED}"
             rm -f "${APP}.ociarchive"
           fi
-
-          # Verify labels survived the round-trip
           podman inspect "${CHUNKED}" \
             | jq -e '.[0].Config.Labels["org.flatpak.ref"] // error("MISSING: org.flatpak.ref")' \
             > /dev/null
@@ -571,7 +443,6 @@ jobs:
               && echo "==> chunkah split succeeded" \
               || echo "==> WARNING: chunkah produced only 1 layer"
           fi
-          # Export for use in subsequent steps
           echo "CHUNKED=${CHUNKED}" >> "$GITHUB_ENV"
           echo "LAYER_COUNT=${LAYER_COUNT}" >> "$GITHUB_ENV"
 
@@ -692,8 +563,6 @@ jobs:
       - name: Login to ghcr.io for skopeo inspect
         if: steps.arch-check.outputs.skip != 'true'
         run: |
-          # skopeo does not inherit podman's login session — explicit login required
-          # Must run before any skopeo inspect step (including Verify image index shape)
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             skopeo login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
 
@@ -777,106 +646,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install just
+        run: |
+          ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/')
+          curl -fsSL "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-${ARCH}-unknown-linux-musl.tar.gz" \
+            | tar -xz -C /usr/local/bin just
+
       - name: Read version and OCI metadata
         id: version
         run: |
-          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            VERSION=$(yq '.version // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${VERSION}" && "${VERSION}" != "null" ]] && echo "version=${VERSION}" >> "$GITHUB_OUTPUT" || true
-            TITLE=$(yq '.title // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${TITLE}" && "${TITLE}" != "null" ]] && echo "title=${TITLE}" >> "$GITHUB_OUTPUT" || true
-            DESC=$(yq '.description // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${DESC}" && "${DESC}" != "null" ]] && echo "description=${DESC}" >> "$GITHUB_OUTPUT" || true
-            LICENSE=$(yq '.license // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${LICENSE}" && "${LICENSE}" != "null" ]] && echo "license=${LICENSE}" >> "$GITHUB_OUTPUT" || true
-            URL=$(yq '.url // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${URL}" && "${URL}" != "null" ]] && echo "source=${URL}" >> "$GITHUB_OUTPUT" || true
-          elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
-            VERSION=$(yq '.["x-version"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            [[ -n "${VERSION}" && "${VERSION}" != "null" ]] && echo "version=${VERSION}" >> "$GITHUB_OUTPUT" || true
-            TITLE=$(yq '.["x-title"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            [[ -n "${TITLE}" && "${TITLE}" != "null" ]] && echo "title=${TITLE}" >> "$GITHUB_OUTPUT" || true
-            DESC=$(yq '.["x-description"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            [[ -n "${DESC}" && "${DESC}" != "null" ]] && echo "description=${DESC}" >> "$GITHUB_OUTPUT" || true
-          fi
+          VERSION=$(just metadata '${{ matrix.app }}' version 2>/dev/null || echo "")
+          [[ "${VERSION}" == "null" ]] && VERSION=""
+          [[ -n "${VERSION}" ]] && echo "version=${VERSION}" >> "$GITHUB_OUTPUT" || true
 
       - name: Install oras
-        run: |
-          ORAS_VERSION="1.3.1"
-          curl -sSLf "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
-            | tar -xz -C /usr/local/bin oras
-          oras version
+        run: just install-tools-oras
 
       - name: Build and push OCI image indexes
-        run: |
-          APP="${{ matrix.app }}"
-          APP="${APP,,}"
-          OWNER="${{ github.repository_owner }}"
-          REPO="${{ github.repository }}"
-
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            oras login ghcr.io -u "${OWNER}" --password-stdin
-
-          # Collect per-arch digests that were actually built and pushed.
-          declare -A ARCH_DIGESTS
-          for ARCH in x86_64 aarch64; do
-            DIGEST_FILE="/tmp/digests/${ARCH}/digest.txt"
-            if [[ -f "${DIGEST_FILE}" ]]; then
-              DIGEST=$(cat "${DIGEST_FILE}")
-              [[ -n "${DIGEST}" ]] && ARCH_DIGESTS[${ARCH}]="${DIGEST}"
-            fi
-          done
-
-          if [[ "${#ARCH_DIGESTS[@]}" -eq 0 ]]; then
-            echo "ERROR: no per-arch digests found for ${APP}" >&2
-            exit 1
-          fi
-
-          # Build OCI annotation flags (index-level; GitHub UI reads these).
-          CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          INDEX_ANNOTATIONS=(
-            --annotation "org.opencontainers.image.created=${CREATED}"
-            --annotation "org.opencontainers.image.revision=${{ github.sha }}"
-            --annotation "org.opencontainers.image.vendor=${{ github.repository_owner }}"
-            --annotation "org.opencontainers.image.url=https://github.com/${REPO}"
-          )
-          [[ -n "${{ steps.version.outputs.version }}" ]] && \
-            INDEX_ANNOTATIONS+=(--annotation "org.opencontainers.image.version=${{ steps.version.outputs.version }}")
-          [[ -n "${{ steps.version.outputs.title }}" ]] && \
-            INDEX_ANNOTATIONS+=(--annotation "org.opencontainers.image.title=${{ steps.version.outputs.title }}")
-          [[ -n "${{ steps.version.outputs.description }}" ]] && \
-            INDEX_ANNOTATIONS+=(--annotation "org.opencontainers.image.description=${{ steps.version.outputs.description }}")
-          [[ -n "${{ steps.version.outputs.license }}" ]] && \
-            INDEX_ANNOTATIONS+=(--annotation "org.opencontainers.image.licenses=${{ steps.version.outputs.license }}")
-          [[ -n "${{ steps.version.outputs.source }}" ]] && \
-            INDEX_ANNOTATIONS+=(--annotation "org.opencontainers.image.source=${{ steps.version.outputs.source }}")
-
-          # Collect source digests for oras.
-          # oras manifest index create resolves digests relative to the same
-          # repository as the target, so pass bare sha256:... references.
-          DIGEST_ARGS=()
-          for ARCH in "${!ARCH_DIGESTS[@]}"; do
-            DIGEST_ARGS+=("${ARCH_DIGESTS[${ARCH}]}")
-          done
-
-          # Create and push OCI image index :latest with index-level annotations.
-          # oras manifest index create supports --annotation natively (unlike
-          # podman manifest annotate --index which requires podman 5+).
-          oras manifest index create \
-            "${INDEX_ANNOTATIONS[@]}" \
-            "ghcr.io/${REPO}/${APP}:latest" \
-            "${DIGEST_ARGS[@]}"
-          echo "==> Pushed ghcr.io/${REPO}/${APP}:latest (${#ARCH_DIGESTS[@]} platform(s))"
-
-          # Push version tag for bundle-repack apps.
-          VERSION="${{ steps.version.outputs.version }}"
-          if [[ -n "${VERSION}" ]]; then
-            oras manifest index create \
-              "${INDEX_ANNOTATIONS[@]}" \
-              "ghcr.io/${REPO}/${APP}:${VERSION}" \
-              "${DIGEST_ARGS[@]}"
-            echo "==> Pushed ghcr.io/${REPO}/${APP}:${VERSION} (${#ARCH_DIGESTS[@]} platform(s))"
-          fi
+        run: just push-manifest-list '${{ matrix.app }}'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify image index shape
         run: |
@@ -927,19 +718,7 @@ jobs:
           fi
 
   # ── Set package description ───────────────────────────────────────────────
-  # Runs after push completes.
-  # update-index is handled by the separate update-index.yml workflow
-  # (triggered via workflow_run on build completion) to serialise gh-pages
-  # pushes across concurrent app builds and avoid git conflicts on gh-pages.
-  #
-  # NOTE: Staging tags (sha-<sha>-<arch>) are intentionally NOT deleted.
-  # ghcr.io permanently deletes manifest blobs when a version is deleted —
-  # skopeo copy within the same registry creates only a tag alias, not an
-  # independent copy. Deleting the staging tag version kills the content
-  # manifest that the OCI image index references by digest, breaking
-  # flatpak install with "manifest unknown". Staging tags accumulate (one
-  # per build per arch) and are cleaned up manually via the cleanup.yml
-  # workflow when needed.
+  # NOTE: Staging tags not deleted — see skills/pipeline.md "Staging tags".
   annotate-packages:
     needs: [diff-changed-apps, sign-and-push, publish-manifest-list]
     if: |
@@ -964,190 +743,32 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Install just
+        run: |
+          ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/')
+          curl -fsSL "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-${ARCH}-unknown-linux-musl.tar.gz" \
+            | tar -xz -C /usr/local/bin just
+
       - name: Set package description
         run: |
           APP="${{ matrix.app }}"
           APP_LOWER="${APP,,}"
           REPO_NAME="${{ github.event.repository.name }}"
-          DESC_FILE="flatpaks/${APP}/release.yaml"
-          if [[ -f "${DESC_FILE}" ]]; then
-            DESCRIPTION=$(yq '.description' "${DESC_FILE}")
-            [[ "${DESCRIPTION}" != "null" && -n "${DESCRIPTION}" ]] || { echo "==> No description in release.yaml, skipping"; exit 0; }
-            # Package name under owner is "reponame/appname" — URL-encode the slash.
-            # Note: PATCH /user/packages/container/<name> returns 404 for user-scoped packages
-            # (same limitation as visibility — web UI only). Best-effort, non-fatal.
-            ENCODED_NAME="${REPO_NAME}%2F${APP_LOWER}"
-            if gh api --method PATCH "/user/packages/container/${ENCODED_NAME}" \
-                -f description="${DESCRIPTION}" 2>/dev/null; then
-              echo "==> Set package description: ${DESCRIPTION}"
-            else
-              echo "==> WARNING: Could not set package description via API (known GitHub limitation — set manually in web UI)"
-            fi
+          DESCRIPTION=$(just metadata "${APP}" description 2>/dev/null || echo "")
+          [[ "${DESCRIPTION}" == "null" || -z "${DESCRIPTION}" ]] && { echo "==> No description for ${APP}, skipping"; exit 0; }
+          # Package name under owner is "reponame/appname" — URL-encode the slash.
+          # Note: PATCH /user/packages/container/<name> returns 404 for user-scoped packages
+          # (same limitation as visibility — web UI only). Best-effort, non-fatal.
+          ENCODED_NAME="${REPO_NAME}%2F${APP_LOWER}"
+          if gh api --method PATCH "/user/packages/container/${ENCODED_NAME}" \
+              -f description="${DESCRIPTION}" 2>/dev/null; then
+            echo "==> Set package description: ${DESCRIPTION}"
           else
-            echo "==> No release.yaml for ${APP}, skipping package description"
+            echo "==> WARNING: Could not set package description via API (known GitHub limitation — set manually in web UI)"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Install test ─────────────────────────────────────────────────────────────
-  # Runs after merge-index so the :latest OCI index is live on ghcr.io.
-  # Tests each built app: adds the testhub Flatpak remote, installs at system
-  # level, runs a launch check, then uninstalls.
-  #
-  # Only runs on push/merge_group/workflow_dispatch — same guard as push/merge-index.
-  # Matrix is scoped to apps detected in this run (not hardcoded), with the same
-  # arch-exclusion logic used by build and push.
-  #
-  # Launch check: `timeout 5 flatpak run <app-id>`
-  #   exit 0   → app ran and exited cleanly         → PASS
-  #   exit 124 → app launched but didn't self-exit  → PASS (headless GUI apps)
-  #   other    → launch failed                      → FAIL
-  #
-  # update-index.yml is triggered by workflow_run on this workflow completing
-  # successfully — so install-test is an implicit gate: the index only updates
-  # if install-test passes.
-  e2e-install:
-    needs: [diff-changed-apps, publish-manifest-list]
-    if: |
-      needs.diff-changed-apps.outputs.apps != '[]' &&
-      needs.diff-changed-apps.outputs.apps != '' &&
-      github.event_name != 'pull_request' &&
-      !cancelled()
-    runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
-    permissions:
-      packages: read
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
-      options: --privileged
-    strategy:
-      fail-fast: false
-      matrix:
-        app: ${{ fromJson(needs.diff-changed-apps.outputs.apps) }}
-        arch: [x86_64, aarch64]
-        include:
-          - arch: x86_64
-            runner: ubuntu-24.04
-          - arch: aarch64
-            runner: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Install yq
-        run: |
-          ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-          wget "https://github.com/mikefarah/yq/releases/download/v4.52.4/yq_linux_${ARCH}" \
-            -O /usr/local/bin/yq && chmod +x /usr/local/bin/yq
-
-      - name: Check arch support
-        id: arch-check
-        run: |
-          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            ARCHES=$(yq '.arches // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            if [[ -n "${ARCHES}" && "${ARCHES}" != "null" ]]; then
-              if ! echo "${ARCHES}" | grep -q "${{ matrix.arch }}"; then
-                echo "==> Skipping ${{ matrix.app }} on ${{ matrix.arch }} (not in arches: ${ARCHES})"
-                echo "skip=true" >> "$GITHUB_OUTPUT"
-              fi
-            fi
-          elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
-            ARCHES=$(yq '.x-arches // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ -n "${ARCHES}" && "${ARCHES}" != "null" ]]; then
-              if ! echo "${ARCHES}" | grep -q "${{ matrix.arch }}"; then
-                echo "==> Skipping ${{ matrix.app }} on ${{ matrix.arch }} (not in x-arches: ${ARCHES})"
-                echo "skip=true" >> "$GITHUB_OUTPUT"
-              fi
-            fi
-            DISABLED=$(yq '.["x-disabled"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ "${DISABLED}" == "true" ]]; then
-              echo "==> Skipping ${{ matrix.app }} install-test (x-disabled: true)"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            fi
-            SKIP_INSTALL=$(yq '.["x-skip-install-test"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
-            if [[ "${SKIP_INSTALL}" == "true" ]]; then
-              echo "==> Skipping ${{ matrix.app }} install-test (x-skip-install-test: true)"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            fi
-          fi
-
-      - name: Read app-id from manifest
-        id: app-meta
-        if: steps.arch-check.outputs.skip != 'true'
-        run: |
-          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            APP_ID=$(python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); print(d['app-id'])" \
-              "flatpaks/${{ matrix.app }}/release.yaml")
-          else
-            APP_ID=$(python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); print(d['app-id'])" \
-              "flatpaks/${{ matrix.app }}/manifest.yaml")
-          fi
-          echo "app_id=${APP_ID}" >> "$GITHUB_OUTPUT"
-
-      - name: Add testhub remote
-        if: steps.arch-check.outputs.skip != 'true'
-        run: |
-          flatpak remote-add --system --if-not-exists testhub \
-            oci+https://projectbluefin.github.io/testhub
-
-      - name: Ensure machine-id and system D-Bus exist
-        if: steps.arch-check.outputs.skip != 'true'
-        run: |
-          mkdir -p /var/lib/dbus && dbus-uuidgen | tee /var/lib/dbus/machine-id
-          # gnome-49 container dbus config uses /app prefix for the socket path
-          mkdir -p /app/var/run/dbus
-          # Create messagebus user/group required by dbus-daemon --system if missing.
-          # gnome-49 container lacks useradd/adduser; write /etc/passwd and /etc/group directly.
-          grep -q '^messagebus:' /etc/group  || echo 'messagebus:x:111:'         >> /etc/group
-          grep -q '^messagebus:' /etc/passwd || echo 'messagebus:x:111:111::/:/sbin/nologin' >> /etc/passwd
-          dbus-daemon --system --fork
-          # Start a session bus so flatpak install does not try to autolaunch one.
-          eval "$(dbus-launch --sh-syntax)"
-          echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}" >> "$GITHUB_ENV"
-
-      - name: Install ${{ matrix.app }}
-        if: steps.arch-check.outputs.skip != 'true'
-        run: |
-          flatpak install --system --noninteractive testhub \
-            "${{ steps.app-meta.outputs.app_id }}"
-
-      - name: Launch check ${{ matrix.app }}
-        if: steps.arch-check.outputs.skip != 'true'
-        run: |
-          APP_ID="${{ steps.app-meta.outputs.app_id }}"
-          MANIFEST=""
-          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            MANIFEST="flatpaks/${{ matrix.app }}/release.yaml"
-          elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
-            MANIFEST="flatpaks/${{ matrix.app }}/manifest.yaml"
-          fi
-          # Check for x-skip-launch-check (headless-incompatible apps, e.g. Electron GUI)
-          if [[ -n "${MANIFEST}" ]]; then
-            SKIP=$(yq -r '.["x-skip-launch-check"] // "false"' "${MANIFEST}")
-            if [[ "${SKIP}" == "true" ]]; then
-              echo "==> SKIP: launch check skipped for ${APP_ID} (x-skip-launch-check: true)"
-              exit 0
-            fi
-          fi
-          # Read optional per-app launch args
-          LAUNCH_ARGS=""
-          if [[ -n "${MANIFEST}" ]]; then
-            LAUNCH_ARGS=$(yq -r '(.["x-launch-check"] // []) | join(" ")' "${MANIFEST}")
-          fi
-          set +e
-          # shellcheck disable=SC2086
-          timeout 5 flatpak run "${APP_ID}" ${LAUNCH_ARGS}
-          EXIT=$?
-          set -e
-          if [[ "${EXIT}" -eq 0 ]]; then
-            echo "==> PASS: ${APP_ID} ran and exited cleanly (exit 0)"
-          elif [[ "${EXIT}" -eq 124 ]]; then
-            echo "==> PASS: ${APP_ID} launched successfully (exit 124 — timed out, app did not self-exit)"
-          else
-            echo "ERROR: ${APP_ID} launch failed (exit ${EXIT})" >&2
-            exit 1
-          fi
-
-      - name: Uninstall ${{ matrix.app }}
-        if: always() && steps.arch-check.outputs.skip != 'true'
-        run: |
-          flatpak uninstall --system --noninteractive \
-            "${{ steps.app-meta.outputs.app_id }}" || true
+  # Moved to update-index.yml — runs AFTER gh-pages index is updated so the install
+  # test always exercises the freshly-pushed image from the live index.

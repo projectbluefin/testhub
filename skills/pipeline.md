@@ -343,3 +343,13 @@ cosign verify \
 
 Apply the same regexp to `cosign verify-attestation`. Never use `--certificate-identity`
 with a literal `@${{ github.ref }}` in any workflow that runs on `merge_group` events.
+
+## Staging tags — do NOT delete
+
+Staging tags (`sha-<sha>-<arch>`) are intentionally permanent. ghcr.io permanently
+deletes manifest blobs when a version/tag is deleted. Since `skopeo copy` within the
+same registry creates only a tag alias (not an independent copy), deleting the staging
+tag version destroys the content manifest that the OCI image index references by digest,
+breaking `flatpak install` with "manifest unknown". Staging tags accumulate and are
+cleaned up manually via `cleanup.yml` when needed. Never add cleanup of staging tags
+to the main build pipeline.

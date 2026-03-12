@@ -24,6 +24,9 @@ jobs:
       contents: write
       packages: read
       actions: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      has_entries: ${{ steps.matrix.outputs.has_entries }}
     # Serialise gh-pages pushes — prevents race if two workflow_run events fire
     # before the first has committed.
     concurrency:
@@ -94,3 +97,65 @@ jobs:
             git commit -m "chore(index): update from build ${{ github.event.workflow_run.run_number }} [skip ci]"
             git push
           fi
+
+      - name: Build app+arch matrix from digest artifacts
+        id: matrix
+        run: |
+          # Derive matrix from digest artifact dirs: digest-<app>-<arch>
+          # Each artifact contains one arch of one app — one run-test invocation each.
+          MATRIX=$(
+            shopt -s nullglob
+            entries=()
+            for d in /tmp/digests/digest-*/; do
+              dir=$(basename "$d")
+              rest="${dir#digest-}"
+              arch="${rest##*-}"
+              app="${rest%-${arch}}"
+              entries+=("{\"app\":\"${app}\",\"arch\":\"${arch}\"}")
+            done
+            if [[ ${#entries[@]} -eq 0 ]]; then
+              echo '{"include":[]}'
+            else
+              joined=$(IFS=,; echo "${entries[*]}")
+              echo "{\"include\":[${joined}]}"
+            fi
+          )
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          echo "has_entries=$(echo "${MATRIX}" | python3 -c 'import sys,json; d=json.load(sys.stdin); print("true" if d.get("include") else "false")')" >> "$GITHUB_OUTPUT"
+
+  # ── E2E install test (runs AFTER gh-pages index is fresh) ─────────────────
+  # Launch check: exit 0 = clean exit (PASS), exit 124 = timeout/headless GUI (PASS), other = FAIL
+  # Runs AFTER update-index so the install test always uses the freshly-pushed image from
+  # the live gh-pages index — eliminates the stale-digest class of bugs.
+  e2e-install:
+    needs: [update-index]
+    if: needs.update-index.outputs.has_entries == 'true'
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    permissions:
+      packages: read
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.update-index.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install yq
+        run: just install-tools-yq
+
+      - name: Install just
+        run: |
+          ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/')
+          curl -fsSL "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-${ARCH}-unknown-linux-musl.tar.gz" \
+            | tar -xz -C /usr/local/bin just
+
+      - name: Run install test
+        run: just run-test '${{ matrix.app }}' '${{ matrix.arch }}'
+
+      - name: Uninstall on failure
+        if: always()
+        run: |
+          APP_ID=$(just metadata '${{ matrix.app }}' app-id 2>/dev/null || echo "")
+          [[ -n "${APP_ID}" ]] && flatpak uninstall --system --noninteractive "${APP_ID}" || true
