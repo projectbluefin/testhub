@@ -41,6 +41,39 @@ Real flatpak-tracker runtime-update issue bodies use:
 
 Applies to: `scripts/sync-runtime-issues.py` and any task spec describing issue body format.
 
+## gnome-49 container: dbus setup required for e2e-install
+
+The `e2e-install` job runs in `ghcr.io/flathub-infra/flatpak-github-actions:gnome-49`.
+This container is missing the `messagebus` system user and has no `useradd`/`adduser`.
+`flatpak install` requires a running dbus session bus or it will fail.
+
+Full setup sequence (must run before `flatpak install`):
+
+```bash
+# 1. Create machine-id
+mkdir -p /var/lib/dbus && dbus-uuidgen | tee /var/lib/dbus/machine-id
+
+# 2. Create socket dir (gnome-49 uses /app as Flatpak prefix)
+mkdir -p /app/var/run/dbus
+
+# 3. Add messagebus user/group — no useradd; write /etc/passwd and /etc/group directly
+grep -q '^messagebus:' /etc/group  || echo 'messagebus:x:111:'                  >> /etc/group
+grep -q '^messagebus:' /etc/passwd || echo 'messagebus:x:111:111::/:/sbin/nologin' >> /etc/passwd
+
+# 4. Start system bus
+dbus-daemon --system --fork
+
+# 5. Start session bus and export to GITHUB_ENV
+eval "$(dbus-launch --sh-syntax)"
+echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}" >> "$GITHUB_ENV"
+```
+
+Key constraints:
+- Socket path prefix is `/app/var/run/dbus` (not `/var/run/dbus`) — gnome-49 flatpak prefix
+- `eval $(dbus-launch --sh-syntax)` sets `DBUS_SESSION_BUS_ADDRESS` in the current shell;
+  the `>> $GITHUB_ENV` export makes it available to subsequent job steps
+- Must run in the same step as the dbus-daemon start, before `flatpak install`
+
 ## Electron GUI apps: x-skip-launch-check required
 
 Electron apps (e.g. goose, lmstudio) run as root in the CI container and require a display
