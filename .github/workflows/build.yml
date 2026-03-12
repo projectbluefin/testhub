@@ -1067,7 +1067,10 @@ jobs:
           # gnome-49 container dbus config uses /app prefix for the socket path
           mkdir -p /app/var/run/dbus
           # Create messagebus user required by dbus-daemon --system if missing
-          id messagebus >/dev/null 2>&1 || useradd --system --no-create-home messagebus
+          # useradd is not available in all containers (gnome-49 lacks it); try adduser as fallback
+          id messagebus >/dev/null 2>&1 || \
+            useradd --system --no-create-home messagebus 2>/dev/null || \
+            adduser --system --no-create-home messagebus 2>/dev/null || true
           dbus-daemon --system --fork
 
       - name: Install ${{ matrix.app }}
