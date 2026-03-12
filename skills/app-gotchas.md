@@ -7,6 +7,7 @@ Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in i
 |---|---|---|
 | ghostty | `flatpaks/ghostty/GOTCHAS.md` | sandbox escape (`--talk-name=org.freedesktop.Flatpak`), aggressive `*.so`/`*.a` cleanup globs |
 | goose | `flatpaks/goose/GOTCHAS.md` | bundle-repack (no metainfo inject), x86_64 only, missing `<categories>` (Flathub-only violation) |
+| io.github.DenysMb.Kontainer | (inline in `app-gotchas.md`) | `appstream-external-screenshot-url` + `appstream-screenshots-not-mirrored-in-ostree` — screenshots not mirrored to Flathub CDN; permanent exception (both stages) |
 | lmstudio | `flatpaks/lmstudio/GOTCHAS.md` | icon omitted (resize unsolved), `--filesystem=home` intentional, x86_64 only, manual Renovate required |
 | firefox-nightly | `flatpaks/firefox-nightly/GOTCHAS.md` | app-id is `org.mozilla.firefox.nightly` (renamed from `org.mozilla.firefox` to avoid Flathub clash), rolling aarch64 sha256, BaseApp required pre-install, `.appdata.xml` skips CI validation |
 | thunderbird-nightly | `flatpaks/thunderbird-nightly/GOTCHAS.md` | x86_64 only (no aarch64), comm-central icon pinning — verify each size sha256 independently (swap of 32/64 was a bug), `--persist=.thunderbird-nightly` profile isolation, no BaseApp pre-install needed, extension stubs created in build-commands (not cleanup-commands) |
@@ -40,6 +41,17 @@ Real flatpak-tracker runtime-update issue bodies use:
 2. Strip surrounding backticks from `Package:` and runtime field values before processing
 
 Applies to: `scripts/sync-runtime-issues.py` and any task spec describing issue body format.
+
+### io.github.DenysMb.Kontainer
+
+- `appstream-external-screenshot-url` + `appstream-screenshots-not-mirrored-in-ostree`:
+  Upstream appstream metadata contains screenshots hosted at external URLs (not mirrored
+  to `https://dl.flathub.org/media`). This is a permanent exception — the app is not on
+  Flathub so screenshot mirroring never happens. Both exceptions declared in
+  `flatpaks/io.github.DenysMb.Kontainer/exceptions.json`.
+  - `appstream-external-screenshot-url` fires at the `builddir` lint stage
+  - `appstream-screenshots-not-mirrored-in-ostree` fires at the `repo` lint stage
+  Both must be present; omitting either causes the x86_64 build to fail.
 
 ## gnome-49 container: dbus setup required for e2e-install
 
@@ -93,7 +105,7 @@ x-skip-launch-check: true
 
 Applies to: **goose**, **lmstudio** (any Electron GUI app).
 
-
+## bundle-repack apps: no metainfo injection
 
 The `release.yaml` pipeline downloads a pre-built upstream `.flatpak` and repackages it as
 OCI. There is no mechanism to inject source-side files (e.g. metainfo XML) into the bundle.
