@@ -5,7 +5,7 @@
       "Name": "projectbluefin/testhub/goose",
       "Images": [
         {
-          "Digest": "sha256:6b59229ed8a710e4f724f36b9afd7971ff20f90e2c86c021fadf863c6be7b659",
+          "Digest": "sha256:23a82547cc25fdee8bff9365c2c8a348c5801a0eec0cbbd83301bf93cd5caaef",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
