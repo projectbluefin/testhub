@@ -1071,6 +1071,9 @@ jobs:
           grep -q '^messagebus:' /etc/group  || echo 'messagebus:x:111:'         >> /etc/group
           grep -q '^messagebus:' /etc/passwd || echo 'messagebus:x:111:111::/:/sbin/nologin' >> /etc/passwd
           dbus-daemon --system --fork
+          # Start a session bus so flatpak install does not try to autolaunch one.
+          eval "$(dbus-launch --sh-syntax)"
+          echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}" >> "$GITHUB_ENV"
 
       - name: Install ${{ matrix.app }}
         if: steps.arch-check.outputs.skip != 'true'
