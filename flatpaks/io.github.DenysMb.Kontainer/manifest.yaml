@@ -27,3 +27,4 @@ app-id: io.github.DenysMb.Kontainer
 x-version: '1.4.1'
 x-arches:
 - x86_64
+x-skip-chunkah: true

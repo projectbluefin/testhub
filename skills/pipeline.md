@@ -82,6 +82,34 @@ Upstream default is 64; we cap lower for Flatpak use (fewer is fine, more = bett
 **Before modifying any chunkah invocation:** fetch upstream README and verify the pattern
 matches the pinned version. Do not rely on memory of prior usage patterns.
 
+### x-skip-chunkah
+
+chunkah requires at least one "component repo" to be detected in the rootfs: an rpmdb,
+files >= 1MB (bigfiles), or `user.component` xattrs. Small apps built via `flatpak-builder`
+(e.g. a tiny KDE/Qt widget like Kontainer, ~750 KiB) have none of these — no rpmdb,
+no large files, and no xattrs. chunkah exits with "no supported component repo found in rootfs".
+
+Attempting to inject xattrs via `setfattr` in a `RUN --mount` inside a custom Containerfile
+(the "xattr injection" approach) does NOT work: the xattr is set on the mount-point directory
+in the chunkah container's namespace, not on a file inside the mounted rootfs overlay, so
+chunkah's scanner never sees it.
+
+**Fix:** Add `x-skip-chunkah: true` to the app's `manifest.yaml`. The pipeline detects this
+flag and sets `CHUNKED="${LABELED}"`, skipping chunkah entirely. The image is pushed as a
+single layer, which is fine — the app is too small to benefit from layer deduplication.
+
+**Rule:** Any manifest.yaml app that is a small GUI widget or utility (< ~5MB total,
+no system dependencies beyond the SDK) should use `x-skip-chunkah: true`.
+
+```yaml
+# flatpaks/<app>/manifest.yaml
+x-skip-chunkah: true
+```
+
+Note: `x-skip-chunkah` is only supported for `manifest.yaml` apps (flatpak-builder path).
+Bundle-repack (`release.yaml`) apps typically have large upstream bundles and do not
+need this flag.
+
 ## Push path
 
 - `just loop` → `skopeo copy --dest-tls-verify=false` → `localhost:5000`

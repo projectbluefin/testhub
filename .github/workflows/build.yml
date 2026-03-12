@@ -526,53 +526,33 @@ jobs:
           fi
           echo "==> MAX_LAYERS=${MAX_LAYERS}"
 
-          # podman inspect produces the array format chunkah's parse_config accepts.
-          # Must use LABELED (has labels) not INPUT (pre-label image).
-          export CHUNKAH_CONFIG_STR
-          CHUNKAH_CONFIG_STR=$(podman inspect "${LABELED}" | jq -c '.[0]')
+          # Per-app chunkah skip: x-skip-chunkah: true in manifest.yaml bypasses chunkah
+          # entirely (CHUNKED == LABELED). Use for small apps with no rpmdb and no files
+          # >= 1MB — chunkah fails with "no supported component repo found in rootfs".
+          SKIP_CHUNKAH="false"
+          if [[ -f "flatpaks/${APP}/manifest.yaml" ]]; then
+            SKIP_CHUNKAH=$(yq '.["x-skip-chunkah"] // false' "flatpaks/${APP}/manifest.yaml")
+          fi
 
-          # podman build internally uses Buildah code but ships as part of podman 5.x
-          # (installed via Homebrew above). All flags are identical to buildah build.
-          #
-          # Custom Containerfile replaces the upstream Containerfile.splitter URL
-          # to inject a user.component xattr on the rootfs before chunkah scans it.
-          # chunkah requires at least one "component repo" (xattr, rpmdb, or
-          # bigfiles >= 1MB). Flatpak manifest.yaml apps (e.g. Kontainer) may have
-          # no large files and no rpmdb, so bigfiles and rpm repos both return None.
-          # Setting user.component on / activates the xattr repo; all files inherit
-          # it via directory inheritance. The mount uses rw so setfattr can write to
-          # the overlay layer. attr (setfattr) is installed from Fedora 43 (~1s).
-          CHUNKAH_CONTAINERFILE=$(mktemp)
-          printf '%s\n' \
-            'ARG CHUNKAH=quay.io/jlebon/chunkah:latest' \
-            'ARG CHUNKAH_ARGS=""' \
-            'ARG CHUNKAH_CONFIG_STR' \
-            'ARG APP_ID="app"' \
-            '' \
-            'FROM overridden AS target' \
-            'FROM ${CHUNKAH} AS chunkah' \
-            'ARG CHUNKAH_CONFIG_STR' \
-            'ARG CHUNKAH_ARGS' \
-            'ARG APP_ID' \
-            'RUN --mount=type=bind,target=/run/src,rw \' \
-            '    --mount=from=target,target=/chunkah,rw \' \
-            '      dnf5 install -y --setopt=install_weak_deps=False --nodocs attr \' \
-            '      && setfattr -n user.component -v "${APP_ID}" /chunkah \' \
-            '      && chunkah build ${CHUNKAH_ARGS} > /run/src/out.ociarchive' \
-            '' \
-            'FROM oci-archive:out.ociarchive' \
-            > "${CHUNKAH_CONTAINERFILE}"
-          echo "==> Running chunkah via podman build"
-          podman build \
-            --skip-unused-stages=false \
-            --from "${LABELED}" \
-            -t "${CHUNKED}" \
-            -v "$(pwd):/run/src" \
-            --security-opt=label=disable \
-            --build-arg CHUNKAH_CONFIG_STR \
-            --build-arg "CHUNKAH_ARGS=--max-layers ${MAX_LAYERS}" \
-            --build-arg "APP_ID=${APP}" \
-            -f "${CHUNKAH_CONTAINERFILE}"
+          if [[ "${SKIP_CHUNKAH}" == "true" ]]; then
+            echo "==> Skipping chunkah (x-skip-chunkah: true in manifest.yaml)"
+            CHUNKED="${LABELED}"
+          else
+            # podman inspect produces the array format chunkah's parse_config accepts.
+            # Must use LABELED (has labels) not INPUT (pre-label image).
+            export CHUNKAH_CONFIG_STR
+            CHUNKAH_CONFIG_STR=$(podman inspect "${LABELED}" | jq -c '.[0]')
+            echo "==> Running chunkah"
+            podman run --rm \
+              --mount=type=image,src="${LABELED}",dst=/chunkah \
+              -e CHUNKAH_CONFIG_STR \
+              quay.io/jlebon/chunkah:v0.3.0 build \
+              --max-layers "${MAX_LAYERS}" \
+              > "${APP}.ociarchive"
+            CHUNKED_ID=$(podman load < "${APP}.ociarchive" | grep -oP '(?<=sha256:)[a-f0-9]+' | head -1)
+            podman tag "${CHUNKED_ID}" "${CHUNKED}"
+            rm -f "${APP}.ociarchive"
+          fi
 
           # Verify labels survived the round-trip
           podman inspect "${CHUNKED}" \
@@ -581,9 +561,13 @@ jobs:
           echo "==> Flatpak labels OK"
           LAYER_COUNT=$(podman inspect "${CHUNKED}" | jq '.[0].RootFS.Layers | length')
           echo "==> Layer count: ${LAYER_COUNT}"
-          [[ "${LAYER_COUNT}" -gt 1 ]] \
-            && echo "==> chunkah split succeeded" \
-            || echo "==> WARNING: chunkah produced only 1 layer"
+          if [[ "${SKIP_CHUNKAH}" == "true" ]]; then
+            echo "==> chunkah skipped (x-skip-chunkah: true) — single layer expected"
+          else
+            [[ "${LAYER_COUNT}" -gt 1 ]] \
+              && echo "==> chunkah split succeeded" \
+              || echo "==> WARNING: chunkah produced only 1 layer"
+          fi
           # Export for use in subsequent steps
           echo "CHUNKED=${CHUNKED}" >> "$GITHUB_ENV"
           echo "LAYER_COUNT=${LAYER_COUNT}" >> "$GITHUB_ENV"
