@@ -8,19 +8,16 @@ Usage:
 Reads:
   GITHUB_TOKEN env var (optional for local dry-run; required in CI to avoid rate limiting)
 
-Writes:
-  flatpaks/<app-id>/manifest.yaml  for each open runtime-update issue
-  (sets x-disabled: true in manifest.yaml when upstream issue closes)
+For each open runtime-update issue in flatpak-tracker, opens one testhub issue
+(if not already open) with all labels from the tracker issue mirrored.
+When a tracker issue closes, closes the matching testhub issue.
 """
 
 import argparse
-import json
 import os
 import re
-import subprocess
-import sys
-import time
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 import yaml
@@ -34,6 +31,7 @@ PROTECTED_DIRS = {
     "virtualbox",
 }
 FLATPAK_TRACKER_REPO = "ublue-os/flatpak-tracker"
+TESTHUB_REPO = os.environ.get("GITHUB_REPOSITORY", "projectbluefin/testhub")
 FLATPAKS_DIR = Path("flatpaks")
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
@@ -138,381 +136,149 @@ def is_protected(app_id: str) -> bool:
     return False
 
 
-def is_already_up_to_date(app_id: str, target_version: str) -> bool:
-    """Return True if flatpaks/<app_id>/manifest.yaml already has the target runtime-version."""
-    manifest_path = FLATPAKS_DIR / app_id / "manifest.yaml"
-    if not manifest_path.exists():
-        return False
-    try:
-        with open(manifest_path) as f:
-            data = yaml.safe_load(f)
-        if data and str(data.get("runtime-version", "")) == str(target_version):
-            return True
-    except Exception:
-        pass
-    return False
+def _api(method: str, path: str, **kwargs) -> requests.Response:
+    """Make an authenticated GitHub API call to TESTHUB_REPO."""
+    url = f"https://api.github.com/repos/{TESTHUB_REPO}/{path}"
+    return requests.request(method, url, headers=HEADERS, timeout=30, **kwargs)
 
 
-def find_runtime_bump_pr(app_id: str) -> dict | None:
-    """Fetch open Flathub PRs for app_id; return manifest data from PR branch if found."""
-    url = f"https://api.github.com/repos/flathub/{app_id}/pulls?state=open&per_page=50"
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    if resp.status_code == 404:
-        return None
+def ensure_label(name: str, color: str, description: str, dry_run: bool) -> None:
+    """Create label in testhub if it doesn't already exist."""
+    resp = _api("GET", f"labels/{quote(name, safe='')}")
+    if resp.status_code == 200:
+        return  # already exists
+    if dry_run:
+        print(f"    DRY-RUN LABEL: would create '{name}' (#{color})")
+        return
+    _api(
+        "POST",
+        "labels",
+        json={"name": name, "color": color, "description": description or ""},
+    )
+    print(f"    LABEL CREATED: {name}")
+
+
+def find_open_testhub_issue(app_id: str) -> int | None:
+    """Return number of an open testhub issue for app_id, or None."""
+    search_title = f"runtime-update: {app_id}"
+    resp = requests.get(
+        "https://api.github.com/search/issues",
+        headers=HEADERS,
+        params={
+            "q": f'repo:{TESTHUB_REPO} is:issue is:open "{search_title}" in:title',
+            "per_page": 1,
+        },
+        timeout=30,
+    )
     if not resp.ok:
         return None
-    prs = resp.json()
-    for pr in prs:
-        title = pr.get("title", "")
-        if "runtime" not in title.lower():
-            continue
-        head = pr.get("head", {})
-        head_repo = head.get("repo") or {}
-        full_name = head_repo.get("full_name", "")
-        ref = head.get("ref", "")
-        if not full_name or not ref:
-            continue
-        for ext, is_json in ((".json", True), (".yml", False), (".yaml", False)):
-            manifest_url = (
-                f"https://raw.githubusercontent.com/{full_name}/{ref}/{app_id}{ext}"
-            )
-            mresp = requests.get(manifest_url, timeout=30)
-            if mresp.status_code != 200:
-                continue
-            try:
-                data = mresp.json() if is_json else yaml.safe_load(mresp.text)
-                if data:
-                    return data
-            except Exception:
-                continue
-    return None
+    items = resp.json().get("items", [])
+    return items[0]["number"] if items else None
 
 
-def fetch_flathub_manifest(app_id: str) -> tuple[dict | None, str]:
-    """Fetch the Flathub manifest from the default branch (master, then main).
-
-    Tries .json first, then .yml, then .yaml.
-    Returns (manifest_data, branch) or (None, "").
-    """
-    for branch in ("master", "main"):
-        for ext in (".json", ".yml", ".yaml"):
-            url = f"https://raw.githubusercontent.com/flathub/{app_id}/{branch}/{app_id}{ext}"
-            resp = requests.get(url, timeout=30)
-            if resp.status_code != 200:
-                continue
-            try:
-                if ext == ".json":
-                    return resp.json(), branch
-                else:
-                    return yaml.safe_load(resp.text), branch
-            except Exception:
-                continue
-    return None, ""
-
-
-def flathub_repo_exists(app_id: str) -> bool:
-    """Return True if the Flathub repo exists."""
-    url = f"https://api.github.com/repos/flathub/{app_id}"
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    return resp.status_code == 200
-
-
-def build_manifest_content(data: dict, issue_number: int) -> str:
-    """Convert JSON manifest dict to YAML string with injected fields and header comment."""
-    # Inject x-version and x-arches into the data dict
-    data["x-version"] = ""
-    data["x-arches"] = ["x86_64"]
-
-    header = f"# Auto-imported from flatpak-tracker issue #{issue_number} — do not edit manually\n"
-    content = header + yaml.dump(
-        data, sort_keys=False, allow_unicode=True, default_flow_style=False
+def find_open_testhub_issue_by_app(app_id: str) -> dict | None:
+    """Return the open testhub issue dict for app_id (runtime-update), or None."""
+    search_title = f"runtime-update: {app_id}"
+    resp = requests.get(
+        "https://api.github.com/search/issues",
+        headers=HEADERS,
+        params={
+            "q": f'repo:{TESTHUB_REPO} is:issue is:open "{search_title}" in:title',
+            "per_page": 1,
+        },
+        timeout=30,
     )
-    return content
+    if not resp.ok:
+        return None
+    items = resp.json().get("items", [])
+    return items[0] if items else None
 
 
-def fetch_local_patch_files(
-    app_id: str, manifest_data: dict, branch: str, dry_run: bool
-) -> list[str]:
-    """Fetch local patch files referenced in manifest modules and write them to flatpaks/<app_id>/.
-
-    Scans all modules recursively for sources of type 'patch' with a 'path' field (not a URL).
-    Returns list of fetched file paths.
-    """
-    fetched: list[str] = []
-    patch_paths: list[str] = []
-
-    # Collect all patch source paths recursively from modules
-    def collect_patches(modules):
-        if not modules:
-            return
-        for mod in modules:
-            if not isinstance(mod, dict):
-                continue
-            for src in mod.get("sources", []):
-                if not isinstance(src, dict):
-                    continue
-                if src.get("type") == "patch":
-                    path = src.get("path", "")
-                    # Only local paths (not URLs)
-                    if (
-                        path
-                        and not path.startswith("http://")
-                        and not path.startswith("https://")
-                    ):
-                        patch_paths.append(path)
-            # Recurse into submodules
-            collect_patches(mod.get("modules", []))
-
-    collect_patches(manifest_data.get("modules", []))
-
-    if not patch_paths:
-        return fetched
-
-    target_dir = FLATPAKS_DIR / app_id
-
-    for patch_path in patch_paths:
-        # patch_path is relative to the manifest — fetch from the same directory in the Flathub repo
-        patch_name = Path(patch_path).name
-        raw_url = (
-            f"https://raw.githubusercontent.com/flathub/{app_id}/{branch}/{patch_path}"
-        )
-        print(f"    PATCH: fetching {patch_path} from {raw_url}")
-
-        if dry_run:
-            print(f"    DRY-RUN PATCH WRITE: {target_dir / patch_name}")
-            fetched.append(patch_name)
-            continue
-
-        try:
-            resp = requests.get(raw_url, timeout=30)
-            if resp.status_code != 200:
-                print(
-                    f"    WARNING: could not fetch {patch_path} (HTTP {resp.status_code}) — build may fail"
-                )
-                continue
-            target_dir.mkdir(parents=True, exist_ok=True)
-            dest = target_dir / patch_name
-            dest.write_bytes(resp.content)
-            print(f"    PATCH WRITTEN: {dest}")
-            fetched.append(patch_name)
-        except Exception as e:
-            print(f"    WARNING: error fetching {patch_path}: {e}")
-
-    return fetched
-
-
-def write_manifest(app_id: str, content: str, dry_run: bool) -> bool:
-    """Write manifest.yaml for app_id. Returns True if a write occurred."""
-    target_dir = FLATPAKS_DIR / app_id
-    target_path = target_dir / "manifest.yaml"
-
-    # Check if content has changed
-    if target_path.exists():
-        existing = target_path.read_text()
-        if existing == content:
-            return False
-
-    if dry_run:
-        print(f"DRY-RUN WRITE: {target_path}")
-        return True
-
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target_path.write_text(content)
-
-    # Write exceptions.json if not already present (appid-filename-mismatch is
-    # always required since we use manifest.yaml not <app-id>.yaml)
-    exceptions_path = target_dir / "exceptions.json"
-    if not exceptions_path.exists():
-        exceptions = {app_id: ["appid-filename-mismatch"]}
-        exceptions_path.write_text(json.dumps(exceptions, indent=4) + "\n")
-
-    return True
-
-
-def retire_app(app_id: str, dry_run: bool) -> bool:
-    """Add x-disabled: true to flatpaks/<app_id>/manifest.yaml. Returns True if written."""
-    manifest_path = FLATPAKS_DIR / app_id / "manifest.yaml"
-    if not manifest_path.exists():
-        return False
-    try:
-        with open(manifest_path) as f:
-            raw = f.read()
-        data = yaml.safe_load(raw)
-    except Exception as e:
-        print(f"WARNING: could not read {manifest_path}: {e}")
-        return False
-
-    if data is None:
-        return False
-    if data.get("x-disabled") is True:
-        return False  # already retired
-
-    data["x-disabled"] = True
-
-    # Preserve header comment if present
-    header = ""
-    if raw.startswith("#"):
-        header = raw.split("\n")[0] + "\n"
-
-    content = header + yaml.dump(
-        data, sort_keys=False, allow_unicode=True, default_flow_style=False
-    )
-
-    if dry_run:
-        print(f"DRY-RUN RETIRE: {manifest_path}")
-        return True
-
-    manifest_path.write_text(content)
-    return True
-
-
-def _git(*args: str) -> str:
-    """Run a git command and return stdout. Raises on non-zero exit."""
-    result = subprocess.run(["git", *args], capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args)} failed:\n{result.stderr.strip()}")
-    return result.stdout.strip()
-
-
-def _gh(*args: str) -> str:
-    """Run a gh command and return stdout. Raises on non-zero exit."""
-    env = os.environ.copy()
-    env["GH_TOKEN"] = GITHUB_TOKEN
-    result = subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
-    if result.returncode != 0:
-        raise RuntimeError(f"gh {' '.join(args)} failed:\n{result.stderr.strip()}")
-    return result.stdout.strip()
-
-
-def open_pr_for_app(
+def open_issue_for_app(
     app_id: str,
     issue_num: int,
+    current_runtime: str | None,
     target_version: str,
     tracker_issue_url: str,
+    label_objects: list[dict],
     dry_run: bool,
 ) -> bool:
-    """Create a branch, commit the app dir, and open a PR for a single imported app.
+    """Open a testhub issue for a runtime-update, mirroring all labels from tracker.
 
-    Returns True if a PR was opened (or would be in dry-run), False if skipped.
-    Skips silently if an open PR for this app already exists on a raptor/runtime branch.
+    Returns True if an issue was opened (or would be in dry-run), False if skipped.
+    Skips if an open issue for this app already exists.
     """
-    # Check for an existing open PR for this app to avoid duplicates
-    existing = _gh(
-        "pr",
-        "list",
-        "--state",
-        "open",
-        "--search",
-        f"raptor/runtime-{app_id} in:title",
-        "--json",
-        "number",
-        "--jq",
-        '.[0].number // ""',
-    )
+    existing = find_open_testhub_issue(app_id)
     if existing:
-        print(f"    PR: open PR #{existing} already exists for {app_id} — skipping")
+        print(f"    ISSUE: #{existing} already open for {app_id} — skipping")
         return False
 
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    branch = f"raptor/runtime-{app_id}-{timestamp}"
-    base_branch = _git("rev-parse", "--abbrev-ref", "HEAD")
-    title = f"chore(flatpaks): runtime-update {app_id} → {target_version}"
-    body = (
-        f"Automated runtime-update sync from "
-        f"[flatpak-tracker #{issue_num}]({tracker_issue_url}).\n\n"
-        f"- App: `{app_id}`\n"
-        f"- New runtime-version: `{target_version}`\n\n"
-        f"Manifests imported by raptor[bot]. Each app builds independently."
+    title = f"runtime-update: {app_id}"
+    current_line = (
+        f"- **Current runtime:** `{current_runtime}`\n" if current_runtime else ""
     )
+    body = (
+        f"Runtime update needed for `{app_id}`.\n\n"
+        f"- **Tracker issue:** [ublue-os/flatpak-tracker#{issue_num}]({tracker_issue_url})\n"
+        f"{current_line}"
+        f"- **Target runtime-version:** `{target_version}`\n\n"
+        f"Labels mirrored from flatpak-tracker. Auto-filed by raptor[bot]."
+    )
+
+    label_names = [lbl["name"] for lbl in label_objects]
 
     if dry_run:
-        print(f"    DRY-RUN PR: would open branch {branch} → PR '{title}'")
+        print(f"    DRY-RUN ISSUE: would open '{title}' with labels {label_names}")
         return True
 
-    _git("config", "user.name", "raptor[bot]")
-    _git("config", "user.email", "noop@projectbluefin.dev")
-    _git("checkout", "-b", branch)
-    _git("add", str(FLATPAKS_DIR / app_id))
-    _git("commit", "-m", title)
-    _git("push", "origin", branch)
-    _gh(
-        "pr",
-        "create",
-        "--title",
-        title,
-        "--body",
-        body,
-        "--base",
-        base_branch,
-        "--head",
-        branch,
+    # Ensure all labels exist in testhub
+    for lbl in label_objects:
+        ensure_label(
+            lbl["name"],
+            lbl.get("color", "ededed"),
+            lbl.get("description", ""),
+            dry_run=False,
+        )
+
+    resp = _api(
+        "POST", "issues", json={"title": title, "body": body, "labels": label_names}
     )
-    # Return to base branch so subsequent apps branch off the same base
-    _git("checkout", base_branch)
-    print(f"    PR: opened branch {branch}")
-    return True
+    if resp.ok:
+        num = resp.json()["number"]
+        print(f"    ISSUE OPENED: #{num} — {title}")
+        return True
+    else:
+        print(
+            f"    ERROR: could not open issue for {app_id}: {resp.status_code} {resp.text[:200]}"
+        )
+        return False
 
 
-def open_pr_for_retirement(app_id: str, issue_num: int, dry_run: bool) -> bool:
-    """Create a branch, commit the x-disabled change, and open a PR for a retired app.
-
-    Returns True if a PR was opened.
-    """
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    branch = f"raptor/retire-{app_id}-{timestamp}"
-    base_branch = _git("rev-parse", "--abbrev-ref", "HEAD")
-    title = f"chore(flatpaks): retire {app_id} (tracker #{issue_num} closed)"
-    body = (
-        f"Flatpak-tracker issue #{issue_num} was closed, indicating the runtime-update "
-        f"is no longer pending for `{app_id}`.\n\n"
-        f"Sets `x-disabled: true` in the manifest so the app is skipped by build and "
-        f"push jobs until manually re-enabled or removed.\n\n"
-        f"Auto-filed by raptor[bot]."
-    )
-
+def close_testhub_issue(issue_number: int, app_id: str, dry_run: bool) -> None:
+    """Close a testhub issue."""
     if dry_run:
-        print(f"    DRY-RUN RETIRE PR: would open branch {branch} → PR '{title}'")
-        return True
-
-    _git("config", "user.name", "raptor[bot]")
-    _git("config", "user.email", "noop@projectbluefin.dev")
-    _git("checkout", "-b", branch)
-    _git("add", str(FLATPAKS_DIR / app_id))
-    _git("commit", "-m", title)
-    _git("push", "origin", branch)
-    _gh(
-        "pr",
-        "create",
-        "--title",
-        title,
-        "--body",
-        body,
-        "--base",
-        base_branch,
-        "--head",
-        branch,
-    )
-    _git("checkout", base_branch)
-    print(f"    RETIRE PR: opened branch {branch}")
-    return True
+        print(f"    DRY-RUN CLOSE: would close issue #{issue_number} for {app_id}")
+        return
+    _api("PATCH", f"issues/{issue_number}", json={"state": "closed"})
+    print(f"    ISSUE CLOSED: #{issue_number} for {app_id}")
 
 
 def process_open_issues(issues: list[dict], dry_run: bool) -> dict:
     """Process open runtime-update issues. Returns summary counts."""
     counts = {
-        "imported": 0,
+        "opened": 0,
         "skipped": 0,
-        "up_to_date": 0,
-        "no_manifest": 0,
+        "already_open": 0,
         "errors": 0,
     }
 
     for issue in issues:
         issue_num = issue["number"]
-        issue_labels = [lbl["name"] for lbl in issue.get("labels", [])]
+        issue_labels = issue.get("labels", [])
+        issue_label_names = [lbl["name"] for lbl in issue_labels]
 
         # Skip: dont-bother label
-        if "dont-bother" in issue_labels:
+        if "dont-bother" in issue_label_names:
             print(f"  SKIP #{issue_num}: has dont-bother label")
             counts["skipped"] += 1
             continue
@@ -525,6 +291,7 @@ def process_open_issues(issues: list[dict], dry_run: bool) -> dict:
 
         app_id = parsed["app_id"]
         target_version = parsed["target_version"]
+        current_runtime = parsed.get("current_runtime")
 
         print(f"  Issue #{issue_num}: {app_id} → runtime-version {target_version}")
 
@@ -534,69 +301,37 @@ def process_open_issues(issues: list[dict], dry_run: bool) -> dict:
             counts["skipped"] += 1
             continue
 
-        # Skip if already up to date
-        if is_already_up_to_date(app_id, target_version):
-            print(f"    SKIP: already at runtime-version {target_version}")
-            counts["up_to_date"] += 1
+        tracker_url = issue.get("html_url", "")
+
+        if not GITHUB_TOKEN:
+            print("    NOTE: GITHUB_TOKEN not set — skipping issue creation")
+            counts["skipped"] += 1
             continue
 
-        # Check Flathub repo exists
-        if not flathub_repo_exists(app_id):
-            print(f"    SKIP: flathub/{app_id} not found (404)")
-            counts["no_manifest"] += 1
-            continue
-
-        # Approach B: try runtime-bump PR branch first
-        manifest_data = find_runtime_bump_pr(app_id)
-        source = "flathub PR branch"
-        flathub_branch = "master"  # default for patch-file fetching
-
-        if manifest_data is None:
-            # Fallback: fetch default branch and bump version
-            manifest_data, flathub_branch = fetch_flathub_manifest(app_id)
-            source = "flathub default branch (bumped)"
-            if manifest_data is None:
-                print(f"    ERROR: could not fetch manifest from flathub/{app_id}")
-                counts["errors"] += 1
-                continue
-            # Inject target runtime-version
-            manifest_data["runtime-version"] = target_version
-
-        print(f"    SOURCE: {source}")
-
-        # Ensure app-id is preserved (Flathub uses app-id, not id)
-        if "id" in manifest_data and "app-id" not in manifest_data:
-            manifest_data["app-id"] = manifest_data.pop("id")
-
-        # Fetch any local patch files referenced in the manifest
-        fetch_local_patch_files(app_id, manifest_data, flathub_branch, dry_run)
-
-        content = build_manifest_content(manifest_data, issue_num)
-        wrote = write_manifest(app_id, content, dry_run)
-
-        if wrote:
-            print(f"    IMPORT: {FLATPAKS_DIR / app_id / 'manifest.yaml'}")
-            counts["imported"] += 1
-            if GITHUB_TOKEN:
-                tracker_url = issue.get("html_url", "")
-                try:
-                    open_pr_for_app(
-                        app_id, issue_num, target_version, tracker_url, dry_run
-                    )
-                except RuntimeError as e:
-                    print(f"    WARNING: could not open PR for {app_id}: {e}")
+        try:
+            opened = open_issue_for_app(
+                app_id,
+                issue_num,
+                current_runtime,
+                target_version,
+                tracker_url,
+                issue_labels,
+                dry_run,
+            )
+            if opened:
+                counts["opened"] += 1
             else:
-                print("    NOTE: GITHUB_TOKEN not set — skipping PR creation")
-        else:
-            print(f"    UNCHANGED: content identical, skipping write")
-            counts["up_to_date"] += 1
+                counts["already_open"] += 1
+        except Exception as e:
+            print(f"    ERROR: {e}")
+            counts["errors"] += 1
 
     return counts
 
 
-def process_retired_issues(issues: list[dict], dry_run: bool) -> int:
-    """Process closed issues and retire matching manifests. Returns retire count."""
-    retired = 0
+def process_closed_issues(issues: list[dict], dry_run: bool) -> int:
+    """Close testhub issues for tracker issues that are now closed. Returns close count."""
+    closed = 0
     for issue in issues:
         issue_num = issue["number"]
         parsed = parse_issue_body(issue.get("body", ""))
@@ -605,15 +340,13 @@ def process_retired_issues(issues: list[dict], dry_run: bool) -> int:
         app_id = parsed["app_id"]
         if is_protected(app_id):
             continue
-        if retire_app(app_id, dry_run):
-            print(f"RETIRE: {app_id} (issue #{issue_num} closed)")
-            retired += 1
-            if GITHUB_TOKEN:
-                try:
-                    open_pr_for_retirement(app_id, issue_num, dry_run)
-                except RuntimeError as e:
-                    print(f"  WARNING: could not open retire PR for {app_id}: {e}")
-    return retired
+        if not GITHUB_TOKEN:
+            continue
+        existing = find_open_testhub_issue_by_app(app_id)
+        if existing:
+            close_testhub_issue(existing["number"], app_id, dry_run)
+            closed += 1
+    return closed
 
 
 def main():
@@ -623,19 +356,19 @@ def main():
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print all actions but do not write any files.",
+        help="Print all actions but do not open or close any issues.",
     )
     args = parser.parse_args()
 
     if args.dry_run:
-        print("=== DRY-RUN MODE: no files will be written ===\n")
+        print("=== DRY-RUN MODE: no issues will be created or closed ===\n")
 
     if not GITHUB_TOKEN:
         print(
             "WARNING: GITHUB_TOKEN not set — unauthenticated requests may be rate-limited\n"
         )
 
-    # === Open issues: import / update manifests ===
+    # === Open issues: open testhub issues ===
     print("Fetching open flatpak-tracker issues (runtime label)...")
     open_issues = get_tracker_issues("open")
     print(f"Found {len(open_issues)} unique open issues\n")
@@ -645,36 +378,29 @@ def main():
         counts = process_open_issues(open_issues, args.dry_run)
     else:
         print("No open runtime-update issues found.")
-        counts = {
-            "imported": 0,
-            "skipped": 0,
-            "up_to_date": 0,
-            "no_manifest": 0,
-            "errors": 0,
-        }
+        counts = {"opened": 0, "skipped": 0, "already_open": 0, "errors": 0}
 
-    # === Closed issues: retire manifests ===
+    # === Closed issues: close matching testhub issues ===
     print("\nFetching closed flatpak-tracker issues (runtime label)...")
     closed_issues = get_tracker_issues("closed")
     print(f"Found {len(closed_issues)} unique closed issues\n")
 
     if closed_issues:
-        print("Processing closed issues (retirement check):")
-        retired = process_retired_issues(closed_issues, args.dry_run)
+        print("Processing closed issues:")
+        closed_count = process_closed_issues(closed_issues, args.dry_run)
     else:
-        retired = 0
+        closed_count = 0
 
     # === Summary ===
     print("\n=== Summary ===")
-    print(f"  Open issues processed : {len(open_issues)}")
-    print(f"  Manifests imported    : {counts['imported']}")
-    print(f"  Already up to date    : {counts['up_to_date']}")
+    print(f"  Open tracker issues   : {len(open_issues)}")
+    print(f"  Testhub issues opened : {counts['opened']}")
+    print(f"  Already open (skip)   : {counts['already_open']}")
     print(f"  Skipped               : {counts['skipped']}")
-    print(f"  Flathub repo missing  : {counts['no_manifest']}")
     print(f"  Errors                : {counts['errors']}")
-    print(f"  Retired (x-disabled)  : {retired}")
+    print(f"  Testhub issues closed : {closed_count}")
     if args.dry_run:
-        print("\n(dry-run: no files were written)")
+        print("\n(dry-run: no issues were created or closed)")
 
 
 if __name__ == "__main__":

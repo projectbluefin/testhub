@@ -11,8 +11,7 @@ jobs:
   sync:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
-      pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -23,11 +22,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install pyyaml requests
-
-      - name: Configure git identity for raptor[bot]
-        run: |
-          git config user.name "raptor[bot]"
-          git config user.email "noop@projectbluefin.dev"
 
       - name: Run sync script
         env:
