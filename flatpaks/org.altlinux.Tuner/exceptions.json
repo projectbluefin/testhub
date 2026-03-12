@@ -4,6 +4,9 @@
         "finish-args-dconf-talk-name",
         "finish-args-unnecessary-xdg-config-dconf-rw-access",
         "finish-args-direct-dconf-path",
-        "finish-args-host-os-ro-filesystem-access"
+        "finish-args-host-os-ro-filesystem-access",
+        "appstream-no-flathub-manifest-key",
+        "appstream-screenshots-not-mirrored-in-ostree",
+        "appstream-external-screenshot-url"
     ]
 }

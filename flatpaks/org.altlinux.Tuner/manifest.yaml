@@ -52,6 +52,7 @@ modules:
   - -Dlua51=false
   - -Dpython3=true
   - -Dvapi=true
+  - -Dgjs=false  # mozjs-128 not available in org.gnome.Platform/49
   sources:
   - type: git
     url: https://gitlab.gnome.org/GNOME/libpeas.git
