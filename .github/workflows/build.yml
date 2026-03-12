@@ -390,6 +390,11 @@ jobs:
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Install podman 5.x via Homebrew
+        run: |
+          /home/linuxbrew/.linuxbrew/bin/brew install podman
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+
       - name: Check arch support
         id: arch-check
         run: |
@@ -473,29 +478,32 @@ jobs:
           IMAGE_ID=$(podman pull --quiet "oci:./${APP}.oci")
           podman tag "${IMAGE_ID}" "${INPUT}"
 
-          # Apply OCI labels via buildah from→config→commit (buildah config requires a
-          # working container, not an image — create one, configure it, then commit back).
+          # Apply OCI labels via podman build --from (overrides FROM without adding a
+          # content layer — only config metadata changes, identical to buildah from/config/commit/rm).
           CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          CTR=$(buildah from "${INPUT}")
-          buildah config \
-            --label "org.opencontainers.image.version=${VERSION:-}" \
-            --label "org.opencontainers.image.source=${UPSTREAM_URL:-}" \
-            --label "org.opencontainers.image.created=${CREATED}" \
-            --label "org.opencontainers.image.vendor=${{ github.repository_owner }}" \
-            --label "org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}" \
-            --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            "${CTR}"
+          LABEL_ARGS=(
+            --label "org.opencontainers.image.version=${VERSION:-}"
+            --label "org.opencontainers.image.source=${UPSTREAM_URL:-}"
+            --label "org.opencontainers.image.created=${CREATED}"
+            --label "org.opencontainers.image.vendor=${{ github.repository_owner }}"
+            --label "org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}"
+            --label "org.opencontainers.image.revision=${{ github.sha }}"
+          )
           # title/description/license only exist in release.yaml (bundle-repack path)
           if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
             TITLE=$(yq '.title // ""' "flatpaks/${{ matrix.app }}/release.yaml")
             DESCRIPTION=$(yq '.description // ""' "flatpaks/${{ matrix.app }}/release.yaml")
             LICENSE=$(yq '.license // ""' "flatpaks/${{ matrix.app }}/release.yaml")
-            [[ -n "${TITLE}" && "${TITLE}" != "null" ]] && buildah config --label "org.opencontainers.image.title=${TITLE}" "${CTR}" || true
-            [[ -n "${DESCRIPTION}" && "${DESCRIPTION}" != "null" ]] && buildah config --label "org.opencontainers.image.description=${DESCRIPTION}" "${CTR}" || true
-            [[ -n "${LICENSE}" && "${LICENSE}" != "null" ]] && buildah config --label "org.opencontainers.image.licenses=${LICENSE}" "${CTR}" || true
+            [[ -n "${TITLE}" && "${TITLE}" != "null" ]] && LABEL_ARGS+=(--label "org.opencontainers.image.title=${TITLE}") || true
+            [[ -n "${DESCRIPTION}" && "${DESCRIPTION}" != "null" ]] && LABEL_ARGS+=(--label "org.opencontainers.image.description=${DESCRIPTION}") || true
+            [[ -n "${LICENSE}" && "${LICENSE}" != "null" ]] && LABEL_ARGS+=(--label "org.opencontainers.image.licenses=${LICENSE}") || true
           fi
-          buildah commit "${CTR}" "${LABELED}"
-          buildah rm "${CTR}"
+          podman build \
+            --from "${INPUT}" \
+            "${LABEL_ARGS[@]}" \
+            --no-cache \
+            -t "${LABELED}" \
+            -f /dev/stdin <<< 'FROM placeholder'
           echo "==> OCI labels applied"
 
           # Per-app max-layers tuning: read from x-chunkah-max-layers (manifest.yaml)
@@ -512,12 +520,10 @@ jobs:
           export CHUNKAH_CONFIG_STR
           CHUNKAH_CONFIG_STR=$(podman inspect "${LABELED}" | jq -c '.[0]')
 
-          # buildah build --from replaces podman run --mount=type=image (requires
-          # capabilities unavailable on non-privileged ubuntu-24.04 runner).
-          # buildah < v1.44 requires -v and --security-opt for the bind mount in
-          # Containerfile.splitter to work correctly.
-          echo "==> Running chunkah via buildah build"
-          buildah build \
+          # podman build internally uses Buildah code but ships as part of podman 5.x
+          # (installed via Homebrew above). All flags are identical to buildah build.
+          echo "==> Running chunkah via podman build"
+          podman build \
             --skip-unused-stages=false \
             --from "${LABELED}" \
             -t "${CHUNKED}" \
@@ -1044,6 +1050,11 @@ jobs:
         run: |
           flatpak remote-add --system --if-not-exists testhub \
             oci+https://projectbluefin.github.io/testhub
+
+      - name: Ensure machine-id exists
+        if: steps.arch-check.outputs.skip != 'true'
+        run: |
+          sudo dbus-uuidgen | sudo tee /var/lib/dbus/machine-id
 
       - name: Install ${{ matrix.app }}
         if: steps.arch-check.outputs.skip != 'true'
