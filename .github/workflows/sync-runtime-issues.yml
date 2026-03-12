@@ -24,29 +24,12 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml requests
 
+      - name: Configure git identity for raptor[bot]
+        run: |
+          git config user.name "raptor[bot]"
+          git config user.email "noop@projectbluefin.dev"
+
       - name: Run sync script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/sync-runtime-issues.py
-
-      - name: Open pull request if changes exist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "raptor[bot]"
-          git config user.email "noop@projectbluefin.dev"
-          git add flatpaks/
-          if git diff --cached --quiet; then
-            echo "==> No changes to commit"
-            exit 0
-          fi
-          COUNT=$(git diff --cached --name-only | grep -c manifest.yaml || true)
-          BRANCH="raptor/runtime-sync-$(date +%Y%m%d-%H%M%S)"
-          git checkout -b "$BRANCH"
-          git commit -m "chore(flatpaks): sync ${COUNT} runtime-update app(s) from flatpak-tracker"
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "chore(flatpaks): sync ${COUNT} runtime-update app(s) from flatpak-tracker" \
-            --body "Automated runtime-update sync from [ublue-os/flatpak-tracker](https://github.com/ublue-os/flatpak-tracker). Manifests imported or updated by raptor[bot]." \
-            --base main \
-            --head "$BRANCH"

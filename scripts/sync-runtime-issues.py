@@ -17,7 +17,9 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -364,6 +366,137 @@ def retire_app(app_id: str, dry_run: bool) -> bool:
     return True
 
 
+def _git(*args: str) -> str:
+    """Run a git command and return stdout. Raises on non-zero exit."""
+    result = subprocess.run(["git", *args], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed:\n{result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def _gh(*args: str) -> str:
+    """Run a gh command and return stdout. Raises on non-zero exit."""
+    env = os.environ.copy()
+    env["GH_TOKEN"] = GITHUB_TOKEN
+    result = subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
+    if result.returncode != 0:
+        raise RuntimeError(f"gh {' '.join(args)} failed:\n{result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def open_pr_for_app(
+    app_id: str,
+    issue_num: int,
+    target_version: str,
+    tracker_issue_url: str,
+    dry_run: bool,
+) -> bool:
+    """Create a branch, commit the app dir, and open a PR for a single imported app.
+
+    Returns True if a PR was opened (or would be in dry-run), False if skipped.
+    Skips silently if an open PR for this app already exists on a raptor/runtime branch.
+    """
+    # Check for an existing open PR for this app to avoid duplicates
+    existing = _gh(
+        "pr",
+        "list",
+        "--state",
+        "open",
+        "--search",
+        f"raptor/runtime-{app_id} in:title",
+        "--json",
+        "number",
+        "--jq",
+        '.[0].number // ""',
+    )
+    if existing:
+        print(f"    PR: open PR #{existing} already exists for {app_id} — skipping")
+        return False
+
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    branch = f"raptor/runtime-{app_id}-{timestamp}"
+    base_branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    title = f"chore(flatpaks): runtime-update {app_id} → {target_version}"
+    body = (
+        f"Automated runtime-update sync from "
+        f"[flatpak-tracker #{issue_num}]({tracker_issue_url}).\n\n"
+        f"- App: `{app_id}`\n"
+        f"- New runtime-version: `{target_version}`\n\n"
+        f"Manifests imported by raptor[bot]. Each app builds independently."
+    )
+
+    if dry_run:
+        print(f"    DRY-RUN PR: would open branch {branch} → PR '{title}'")
+        return True
+
+    _git("config", "user.name", "raptor[bot]")
+    _git("config", "user.email", "noop@projectbluefin.dev")
+    _git("checkout", "-b", branch)
+    _git("add", str(FLATPAKS_DIR / app_id))
+    _git("commit", "-m", title)
+    _git("push", "origin", branch)
+    _gh(
+        "pr",
+        "create",
+        "--title",
+        title,
+        "--body",
+        body,
+        "--base",
+        base_branch,
+        "--head",
+        branch,
+    )
+    # Return to base branch so subsequent apps branch off the same base
+    _git("checkout", base_branch)
+    print(f"    PR: opened branch {branch}")
+    return True
+
+
+def open_pr_for_retirement(app_id: str, issue_num: int, dry_run: bool) -> bool:
+    """Create a branch, commit the x-disabled change, and open a PR for a retired app.
+
+    Returns True if a PR was opened.
+    """
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    branch = f"raptor/retire-{app_id}-{timestamp}"
+    base_branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    title = f"chore(flatpaks): retire {app_id} (tracker #{issue_num} closed)"
+    body = (
+        f"Flatpak-tracker issue #{issue_num} was closed, indicating the runtime-update "
+        f"is no longer pending for `{app_id}`.\n\n"
+        f"Sets `x-disabled: true` in the manifest so the app is skipped by build and "
+        f"push jobs until manually re-enabled or removed.\n\n"
+        f"Auto-filed by raptor[bot]."
+    )
+
+    if dry_run:
+        print(f"    DRY-RUN RETIRE PR: would open branch {branch} → PR '{title}'")
+        return True
+
+    _git("config", "user.name", "raptor[bot]")
+    _git("config", "user.email", "noop@projectbluefin.dev")
+    _git("checkout", "-b", branch)
+    _git("add", str(FLATPAKS_DIR / app_id))
+    _git("commit", "-m", title)
+    _git("push", "origin", branch)
+    _gh(
+        "pr",
+        "create",
+        "--title",
+        title,
+        "--body",
+        body,
+        "--base",
+        base_branch,
+        "--head",
+        branch,
+    )
+    _git("checkout", base_branch)
+    print(f"    RETIRE PR: opened branch {branch}")
+    return True
+
+
 def process_open_issues(issues: list[dict], dry_run: bool) -> dict:
     """Process open runtime-update issues. Returns summary counts."""
     counts = {
@@ -444,6 +577,16 @@ def process_open_issues(issues: list[dict], dry_run: bool) -> dict:
         if wrote:
             print(f"    IMPORT: {FLATPAKS_DIR / app_id / 'manifest.yaml'}")
             counts["imported"] += 1
+            if GITHUB_TOKEN:
+                tracker_url = issue.get("html_url", "")
+                try:
+                    open_pr_for_app(
+                        app_id, issue_num, target_version, tracker_url, dry_run
+                    )
+                except RuntimeError as e:
+                    print(f"    WARNING: could not open PR for {app_id}: {e}")
+            else:
+                print("    NOTE: GITHUB_TOKEN not set — skipping PR creation")
         else:
             print(f"    UNCHANGED: content identical, skipping write")
             counts["up_to_date"] += 1
@@ -465,6 +608,11 @@ def process_retired_issues(issues: list[dict], dry_run: bool) -> int:
         if retire_app(app_id, dry_run):
             print(f"RETIRE: {app_id} (issue #{issue_num} closed)")
             retired += 1
+            if GITHUB_TOKEN:
+                try:
+                    open_pr_for_retirement(app_id, issue_num, dry_run)
+                except RuntimeError as e:
+                    print(f"  WARNING: could not open retire PR for {app_id}: {e}")
     return retired
 
 
