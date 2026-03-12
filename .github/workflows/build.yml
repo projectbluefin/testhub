@@ -478,7 +478,6 @@ jobs:
         if: steps.arch-check.outputs.skip != 'true'
         env:
           APP: ${{ matrix.app }}
-          CHUNKAH_SPLITTER: https://github.com/coreos/chunkah/releases/download/v0.3.0/Containerfile.splitter
         run: |
           # podman requires repository names to be lowercase; app-ids may contain uppercase
           APP_LOWER="${APP,,}"
@@ -534,6 +533,35 @@ jobs:
 
           # podman build internally uses Buildah code but ships as part of podman 5.x
           # (installed via Homebrew above). All flags are identical to buildah build.
+          #
+          # Custom Containerfile replaces the upstream Containerfile.splitter URL
+          # to inject a user.component xattr on the rootfs before chunkah scans it.
+          # chunkah requires at least one "component repo" (xattr, rpmdb, or
+          # bigfiles >= 1MB). Flatpak manifest.yaml apps (e.g. Kontainer) may have
+          # no large files and no rpmdb, so bigfiles and rpm repos both return None.
+          # Setting user.component on / activates the xattr repo; all files inherit
+          # it via directory inheritance. The mount uses rw so setfattr can write to
+          # the overlay layer. attr (setfattr) is installed from Fedora 43 (~1s).
+          CHUNKAH_CONTAINERFILE=$(mktemp)
+          printf '%s\n' \
+            'ARG CHUNKAH=quay.io/jlebon/chunkah:latest' \
+            'ARG CHUNKAH_ARGS=""' \
+            'ARG CHUNKAH_CONFIG_STR' \
+            'ARG APP_ID="app"' \
+            '' \
+            'FROM overridden AS target' \
+            'FROM ${CHUNKAH} AS chunkah' \
+            'ARG CHUNKAH_CONFIG_STR' \
+            'ARG CHUNKAH_ARGS' \
+            'ARG APP_ID' \
+            'RUN --mount=type=bind,target=/run/src,rw \' \
+            '    --mount=from=target,target=/chunkah,rw \' \
+            '      dnf5 install -y --setopt=install_weak_deps=False --nodocs attr \' \
+            '      && setfattr -n user.component -v "${APP_ID}" /chunkah \' \
+            '      && chunkah build ${CHUNKAH_ARGS} > /run/src/out.ociarchive' \
+            '' \
+            'FROM oci-archive:out.ociarchive' \
+            > "${CHUNKAH_CONTAINERFILE}"
           echo "==> Running chunkah via podman build"
           podman build \
             --skip-unused-stages=false \
@@ -543,7 +571,8 @@ jobs:
             --security-opt=label=disable \
             --build-arg CHUNKAH_CONFIG_STR \
             --build-arg "CHUNKAH_ARGS=--max-layers ${MAX_LAYERS}" \
-            "${CHUNKAH_SPLITTER}"
+            --build-arg "APP_ID=${APP}" \
+            -f "${CHUNKAH_CONTAINERFILE}"
 
           # Verify labels survived the round-trip
           podman inspect "${CHUNKED}" \
