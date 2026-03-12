@@ -116,6 +116,12 @@ jobs:
                 echo "skip=true" >> "$GITHUB_OUTPUT"
               fi
             fi
+            # Skip soft-disabled apps (auto-imported and retired via sync-runtime-issues)
+            DISABLED=$(yq '.["x-disabled"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
+            if [[ "${DISABLED}" == "true" ]]; then
+              echo "==> Skipping ${{ matrix.app }} (x-disabled: true)"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "ERROR: no manifest.yaml or release.yaml in flatpaks/${{ matrix.app }}/" >&2
             exit 1
@@ -326,6 +332,11 @@ jobs:
                 echo "==> Skipping ${{ matrix.app }} push on ${{ matrix.arch }} (not in x-arches: ${ARCHES})"
                 echo "skip=true" >> "$GITHUB_OUTPUT"
               fi
+            fi
+            DISABLED=$(yq '.["x-disabled"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
+            if [[ "${DISABLED}" == "true" ]]; then
+              echo "==> Skipping ${{ matrix.app }} push (x-disabled: true)"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
             fi
           fi
 
@@ -886,6 +897,11 @@ jobs:
                 echo "==> Skipping ${{ matrix.app }} on ${{ matrix.arch }} (not in x-arches: ${ARCHES})"
                 echo "skip=true" >> "$GITHUB_OUTPUT"
               fi
+            fi
+            DISABLED=$(yq '.["x-disabled"] // ""' "flatpaks/${{ matrix.app }}/manifest.yaml")
+            if [[ "${DISABLED}" == "true" ]]; then
+              echo "==> Skipping ${{ matrix.app }} install-test (x-disabled: true)"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
             fi
           fi
 
