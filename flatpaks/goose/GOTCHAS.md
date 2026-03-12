@@ -21,7 +21,17 @@ migrated to the `manifest.yaml` (flatpak-builder) path.
 requires at least one category. This is a documentation-only violation — it does not affect
 build or runtime behaviour in this personal remote.
 
-## chunkah layer count
+## CI launch check: x-skip-launch-check required
+
+Goose is a GUI Electron app. In a headless CI container (no `$DISPLAY`), `zypak-wrapper`
+segfaults with exit 139 — even with `--no-sandbox` — because the Ozone X11 platform fails
+to initialize (`Missing X server or $DISPLAY`).
+
+Set `x-skip-launch-check: true` in `release.yaml` so the launch check step exits 0 with a
+SKIP message instead of trying to run a display-required binary. The install step already
+validates the Flatpak can be installed; the launch check adds no signal here.
+
+
 
 16 layers configured (`chunkah-max-layers: "16"`). At ~200MB the OSTree object store
 heuristics alone may produce ~30 layers. If chunkah warns about exceeding the layer budget,

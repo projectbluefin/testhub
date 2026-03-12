@@ -41,7 +41,26 @@ Real flatpak-tracker runtime-update issue bodies use:
 
 Applies to: `scripts/sync-runtime-issues.py` and any task spec describing issue body format.
 
-## bundle-repack apps: no metainfo injection
+## Electron GUI apps: x-skip-launch-check required
+
+Electron apps (e.g. goose, lmstudio) run as root in the CI container and require a display
+to initialize (X11/Wayland). In the headless gnome-49 container:
+
+- `zypak-wrapper` segfaults with exit 139 even with `--no-sandbox`
+- The Ozone X11 platform fails: `Missing X server or $DISPLAY`
+
+**Fix:** set `x-skip-launch-check: true` in `release.yaml` (or `manifest.yaml`). The
+launch check step reads this field and exits 0 with a SKIP message. The install step
+already validates that the Flatpak installs correctly.
+
+```yaml
+# In release.yaml or manifest.yaml:
+x-skip-launch-check: true
+```
+
+Applies to: **goose**, **lmstudio** (any Electron GUI app).
+
+
 
 The `release.yaml` pipeline downloads a pre-built upstream `.flatpak` and repackages it as
 OCI. There is no mechanism to inject source-side files (e.g. metainfo XML) into the bundle.
