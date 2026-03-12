@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -28,15 +29,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/sync-runtime-issues.py
 
-      - name: Commit changes
+      - name: Open pull request if changes exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "raptor[bot]"
           git config user.email "noop@projectbluefin.dev"
           git add flatpaks/
           if git diff --cached --quiet; then
             echo "==> No changes to commit"
-          else
-            COUNT=$(git diff --cached --name-only | grep -c manifest.yaml || true)
-            git commit -m "chore(flatpaks): sync ${COUNT} runtime-update app(s) from flatpak-tracker [skip ci]"
-            git push
+            exit 0
           fi
+          COUNT=$(git diff --cached --name-only | grep -c manifest.yaml || true)
+          BRANCH="raptor/runtime-sync-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git commit -m "chore(flatpaks): sync ${COUNT} runtime-update app(s) from flatpak-tracker"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore(flatpaks): sync ${COUNT} runtime-update app(s) from flatpak-tracker" \
+            --body "Automated runtime-update sync from [ublue-os/flatpak-tracker](https://github.com/ublue-os/flatpak-tracker). Manifests imported or updated by raptor[bot]." \
+            --base main \
+            --head "$BRANCH"
