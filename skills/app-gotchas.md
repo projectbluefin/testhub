@@ -12,6 +12,7 @@ Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in i
 | firefox-nightly | `flatpaks/firefox-nightly/GOTCHAS.md` | app-id is `org.mozilla.firefox.nightly` (renamed from `org.mozilla.firefox` to avoid Flathub clash), rolling aarch64 sha256, BaseApp required pre-install, `.appdata.xml` skips CI validation |
 | thunderbird-nightly | `flatpaks/thunderbird-nightly/GOTCHAS.md` | x86_64 only (no aarch64), comm-central icon pinning — verify each size sha256 independently (swap of 32/64 was a bug), `--persist=.thunderbird-nightly` profile isolation, no BaseApp pre-install needed, extension stubs created in build-commands (not cleanup-commands) |
 | virtualbox | `flatpaks/virtualbox/GOTCHAS.md` | KVM backend (no vboxdrv kernel module), X11 only (VBoxSVGA Wayland bug), hardening disabled, gsoap serial build, shared-modules SDL1+GLU inlined |
+| org.altlinux.Tuner | (inline in `app-gotchas.md`) | `libpeas` 2.x requires `-Dgjs=false` on GNOME Platform 49 (mozjs-128 not available) |
 
 ## Flatpak install scope — always system-wide
 
@@ -104,6 +105,35 @@ x-skip-launch-check: true
 ```
 
 Applies to: **goose**, **lmstudio** (any Electron GUI app).
+
+## org.altlinux.Tuner
+
+### libpeas 2.x: `-Dgjs=false` required on GNOME Platform 49
+
+`libpeas` 2.0.x depends on `gjs` (GNOME JavaScript), which requires SpiderMonkey
+(`mozjs-128`). `mozjs-128` is **not included** in `org.gnome.Platform//49`, so the
+`libpeas` build fails on any clean x86_64 build with:
+
+```
+meson: error: Dependency "mozjs-128" not found
+```
+
+**Fix:** add `-Dgjs=false` to the `libpeas` module's `config-opts`:
+
+```yaml
+- name: libpeas
+  buildsystem: meson
+  config-opts:
+    - -Dgjs=false
+    # ... other opts
+```
+
+This disables the GJS plugin loader; Tuner does not use it, so functionality is unaffected.
+
+**Why aarch64 may pass while x86_64 fails:** flatpak-builder caches build artifacts
+by content hash. If a prior aarch64 build of `libpeas` was cached before the mozjs-128
+check was enforced, the cached result is reused and the step appears to pass. A clean
+build (no cache) will reproduce the failure on both arches.
 
 ## bundle-repack apps: no metainfo injection
 

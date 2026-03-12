@@ -14,11 +14,15 @@ Every package must carry an explicit version tag on ghcr.io in addition to `:lat
 - `release.yaml` apps: `version` is a required field — CI errors if missing.
 - `manifest.yaml` apps: add `x-version: "<version>"` as a top-level field.
   flatpak-builder ignores `x-`-prefixed fields — safe to add.
-- If `x-version` is absent, the build warns and pushes `:latest` only.
+- If `x-version` is absent **or set to an empty string (`x-version: ''`)**, the build
+  warns and pushes `:latest` only. Both cases are equivalent failures — always set a
+  real version string.
 - Version strings must reflect the actual upstream app version — not build dates,
   git shas, or repo versions.
 - When upgrading an app, update `x-version` (or `version`) in the same commit that
   updates the source URL and sha256.
+- **Checking the current version:** use the Flathub API:
+  `curl -s https://flathub.org/api/v2/appstream/<app-id> | python3 -c "import json,sys; d=json.load(sys.stdin); print([r['version'] for r in d.get('releases',[])][:3])"`
 
 ## Source URL convention (manifest.yaml apps)
 

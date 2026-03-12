@@ -127,6 +127,16 @@ until CI passes end-to-end:
 Never close a "new app" issue based solely on files being committed. The Flatpak
 must be buildable and installable before the issue is closed.
 
+## Runtime-update PRs
+
+When a runtime-update PR is created (e.g. by raptor[bot] or Copilot), the manifest
+may already reflect the target state — `runtime-version` set on import with no other
+diffs. **CI will not trigger on a branch with no file changes to `flatpaks/`.**
+
+To trigger CI: make a real, correct change to the manifest. The canonical fix is to
+set `x-version` to the current upstream release version (check Flathub or the upstream
+repo). This is always a valid improvement — `x-version` must not be empty.
+
 ## flatpak-builder-lint known errors
 
 `build.yml` runs `flatpak-builder-lint manifest "flatpaks/$app/manifest.yaml"` during CI.
@@ -195,16 +205,23 @@ Both steps use the same `exceptions.json` file as the manifest lint step.
 
 #### Required exceptions for non-Flathub repos
 
-These errors fire on every manifest.yaml app in testhub (not Flathub-specific behavior):
+These errors can fire on manifest.yaml apps in testhub. Which ones apply depends on the
+app's metainfo content:
 
-| Exception | Reason |
-|---|---|
-| `appstream-screenshots-not-mirrored-in-ostree` | No `--mirror-screenshots-url` passed; not required outside Flathub |
-| `appstream-no-flathub-manifest-key` | `flathub::manifest` custom tag only required for Flathub submissions |
-| `appstream-external-screenshot-url` | Same root cause as above — screenshots not mirrored |
-| `metainfo-missing-screenshots` | Personal hosting repo — no screenshots maintained here |
+| Exception | When it fires | Add? |
+|---|---|---|
+| `appstream-no-flathub-manifest-key` | Always — `flathub::manifest` custom tag only required for Flathub submissions | Always |
+| `appstream-screenshots-not-mirrored-in-ostree` | App has screenshots in metainfo but `--mirror-screenshots-url` not passed | If app has screenshots |
+| `appstream-external-screenshot-url` | App has screenshots pointing to external URLs (not dl.flathub.org/media) | If app has screenshots |
+| `metainfo-missing-screenshots` | App has no screenshots in metainfo | If app has no screenshots |
 
-Add these **four** to `exceptions.json` for every manifest.yaml app.
+**Practical rule:** Add `appstream-no-flathub-manifest-key` universally. Then:
+- If the app **has** screenshots in metainfo: add `appstream-external-screenshot-url` + `appstream-screenshots-not-mirrored-in-ostree`
+- If the app **has no** screenshots: add `metainfo-missing-screenshots`
+
+Note: `appstream-screenshots-not-mirrored-in-ostree` and `appstream-external-screenshot-url`
+fire at **different** lint stages (builddir vs repo respectively) — both must be in
+`exceptions.json` or the build will fail at one stage even if the other passes.
 
 If CI surfaces additional errors after first run, add them to `exceptions.json` and
 document in the app's `GOTCHAS.md`. Do not add metainfo fields we cannot keep accurate
