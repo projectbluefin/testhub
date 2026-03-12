@@ -1085,14 +1085,24 @@ jobs:
         if: steps.arch-check.outputs.skip != 'true'
         run: |
           APP_ID="${{ steps.app-meta.outputs.app_id }}"
-          # Read optional per-app launch args (e.g. --no-sandbox for Electron root runs)
-          LAUNCH_ARGS=""
+          MANIFEST=""
           if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
-            LAUNCH_ARGS=$(yq -r '(.["x-launch-check"] // []) | join(" ")' \
-              "flatpaks/${{ matrix.app }}/release.yaml")
+            MANIFEST="flatpaks/${{ matrix.app }}/release.yaml"
           elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
-            LAUNCH_ARGS=$(yq -r '(.["x-launch-check"] // []) | join(" ")' \
-              "flatpaks/${{ matrix.app }}/manifest.yaml")
+            MANIFEST="flatpaks/${{ matrix.app }}/manifest.yaml"
+          fi
+          # Check for x-skip-launch-check (headless-incompatible apps, e.g. Electron GUI)
+          if [[ -n "${MANIFEST}" ]]; then
+            SKIP=$(yq -r '.["x-skip-launch-check"] // "false"' "${MANIFEST}")
+            if [[ "${SKIP}" == "true" ]]; then
+              echo "==> SKIP: launch check skipped for ${APP_ID} (x-skip-launch-check: true)"
+              exit 0
+            fi
+          fi
+          # Read optional per-app launch args
+          LAUNCH_ARGS=""
+          if [[ -n "${MANIFEST}" ]]; then
+            LAUNCH_ARGS=$(yq -r '(.["x-launch-check"] // []) | join(" ")' "${MANIFEST}")
           fi
           set +e
           # shellcheck disable=SC2086
