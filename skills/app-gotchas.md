@@ -27,6 +27,20 @@ flatpak --user install <remote> <app-id>
 
 If an upstream doc or CI example uses `--user`, ignore it and use system-wide instead.
 
+## flatpak-tracker issue body format
+
+Real flatpak-tracker runtime-update issue bodies use:
+
+- **Single-slash runtime format with arch triplet:** `org.gnome.Platform/x86_64/49`
+  (NOT double-slash `org.gnome.Platform//49` — the arch field is always present)
+- **Backtick-quoted field values:** e.g. `` **Package:** `app/com.foo.Bar` ``
+
+`sync-runtime-issues.py` regex patterns must:
+1. Parse the full triplet format `<runtime>/<arch>/<version>`
+2. Strip surrounding backticks from `Package:` and runtime field values before processing
+
+Applies to: `scripts/sync-runtime-issues.py` and any task spec describing issue body format.
+
 ## bundle-repack apps: no metainfo injection
 
 The `release.yaml` pipeline downloads a pre-built upstream `.flatpak` and repackages it as

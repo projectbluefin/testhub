@@ -33,6 +33,11 @@ This runs `scripts/update-index.py` in the gh-pages worktree, commits, and pushe
 just check-index   # validates index/static JSON from main branch (uses worktree internally)
 ```
 
+**GOTCHA:** `--validate` does not use `--repo`. The `--repo` argument in `update-index.py`
+must be declared as optional (not `required=True`) so `just check-index` (which calls
+`--validate` without `--repo`) works. If argparse declares `--repo` as required
+unconditionally, the `--validate` path hard-fails. Fixed in commit 542883b.
+
 ## update-index.py
 
 Located at `scripts/update-index.py`. Regenerates `index/static` on the gh-pages branch.
