@@ -7,6 +7,7 @@ Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in i
 |---|---|---|
 | ghostty | `flatpaks/ghostty/GOTCHAS.md` | sandbox escape (`--talk-name=org.freedesktop.Flatpak`), aggressive `*.so`/`*.a` cleanup globs |
 | goose | `flatpaks/goose/GOTCHAS.md` | bundle-repack (no metainfo inject), x86_64 only, missing `<categories>` (Flathub-only violation) |
+| io.github.DenysMb.Kontainer | (inline in `app-gotchas.md`) | `appstream-external-screenshot-url` — screenshots not mirrored to Flathub CDN; permanent exception |
 | lmstudio | `flatpaks/lmstudio/GOTCHAS.md` | icon omitted (resize unsolved), `--filesystem=home` intentional, x86_64 only, manual Renovate required |
 | firefox-nightly | `flatpaks/firefox-nightly/GOTCHAS.md` | app-id is `org.mozilla.firefox.nightly` (renamed from `org.mozilla.firefox` to avoid Flathub clash), rolling aarch64 sha256, BaseApp required pre-install, `.appdata.xml` skips CI validation |
 | thunderbird-nightly | `flatpaks/thunderbird-nightly/GOTCHAS.md` | x86_64 only (no aarch64), comm-central icon pinning — verify each size sha256 independently (swap of 32/64 was a bug), `--persist=.thunderbird-nightly` profile isolation, no BaseApp pre-install needed, extension stubs created in build-commands (not cleanup-commands) |
@@ -40,6 +41,13 @@ Real flatpak-tracker runtime-update issue bodies use:
 2. Strip surrounding backticks from `Package:` and runtime field values before processing
 
 Applies to: `scripts/sync-runtime-issues.py` and any task spec describing issue body format.
+
+### io.github.DenysMb.Kontainer
+
+- `appstream-external-screenshot-url`: Upstream appstream metadata contains screenshots
+  hosted at external URLs (not mirrored to `https://dl.flathub.org/media`). This is a
+  permanent exception — the app is not on Flathub so screenshot mirroring never happens.
+  Exception declared in `flatpaks/io.github.DenysMb.Kontainer/exceptions.json`.
 
 ## bundle-repack apps: no metainfo injection
 

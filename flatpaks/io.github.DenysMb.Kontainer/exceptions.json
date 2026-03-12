@@ -3,6 +3,7 @@
         "appid-filename-mismatch",
         "finish-args-desktopfile-filesystem-access",
         "finish-args-flatpak-spawn-access",
-        "appstream-missing-vcs-browser-url"
+        "appstream-missing-vcs-browser-url",
+        "appstream-external-screenshot-url"
     ]
 }
