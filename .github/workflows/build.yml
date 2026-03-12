@@ -1064,6 +1064,7 @@ jobs:
         if: steps.arch-check.outputs.skip != 'true'
         run: |
           mkdir -p /var/lib/dbus && dbus-uuidgen | tee /var/lib/dbus/machine-id
+          mkdir -p /run/dbus
           dbus-daemon --system --fork
 
       - name: Install ${{ matrix.app }}
