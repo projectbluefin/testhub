@@ -555,9 +555,8 @@ push app arch registry="ghcr.io":
     ARCH="{{ arch }}"
     REGISTRY="{{ registry }}"
     case "${ARCH}" in
-      x86_64)  OCI_ARCH="amd64" ;;
-      aarch64) OCI_ARCH="arm64" ;;
-      *)       echo "ERROR: unknown arch ${ARCH}" >&2; exit 1 ;;
+      x86_64|aarch64) ;;
+      *) echo "ERROR: unknown arch ${ARCH}" >&2; exit 1 ;;
     esac
 
     APP_LOWER="${APP,,}"
