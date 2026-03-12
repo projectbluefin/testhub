@@ -480,9 +480,11 @@ jobs:
           APP: ${{ matrix.app }}
           CHUNKAH_SPLITTER: https://github.com/coreos/chunkah/releases/download/v0.3.0/Containerfile.splitter
         run: |
-          INPUT="localhost/${APP}:input"
-          LABELED="localhost/${APP}:labeled"
-          CHUNKED="localhost/${APP}:chunked"
+          # podman requires repository names to be lowercase; app-ids may contain uppercase
+          APP_LOWER="${APP,,}"
+          INPUT="localhost/${APP_LOWER}:input"
+          LABELED="localhost/${APP_LOWER}:labeled"
+          CHUNKED="localhost/${APP_LOWER}:chunked"
 
           # Pull OCI dir into the shared podman/buildah store and tag for stable reference.
           IMAGE_ID=$(podman pull --quiet "oci:./${APP}.oci")
