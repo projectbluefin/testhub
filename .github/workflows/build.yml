@@ -1057,7 +1057,7 @@ jobs:
       - name: Ensure machine-id exists
         if: steps.arch-check.outputs.skip != 'true'
         run: |
-          sudo dbus-uuidgen | sudo tee /var/lib/dbus/machine-id
+          dbus-uuidgen | tee /var/lib/dbus/machine-id
 
       - name: Install ${{ matrix.app }}
         if: steps.arch-check.outputs.skip != 'true'
