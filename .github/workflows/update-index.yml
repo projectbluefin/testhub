@@ -1,12 +1,12 @@
-name: Update Flatpak Index
+name: Sync Flatpak Remote Index
 
-# Triggered after each "Build Flatpak OCI" run completes successfully.
+# Triggered after each "Build → Sign → Publish Flatpak OCI" run completes successfully.
 # Running as a separate workflow serialises all gh-pages pushes — no race
 # between concurrent app builds writing to the same branch.
 
 on:
   workflow_run:
-    workflows: ["Build Flatpak OCI"]
+    workflows: ["Build → Sign → Publish Flatpak OCI"]
     types: [completed]
 
 # Top-level: deny all. This job only needs to write gh-pages and read packages.

@@ -1,5 +1,5 @@
-name: Build Flatpak OCI
-run-name: "Build ${{ inputs.app || 'flatpak(s)' }} OCI (${{ github.ref_name }})"
+name: Build → Sign → Publish Flatpak OCI
+run-name: "[${{ github.ref_name }}] ${{ inputs.app || 'all apps' }}: build → sign → publish"
 
 on:
   push:
@@ -31,7 +31,7 @@ permissions: {}
 jobs:
 
   # ── Detect which apps changed ──────────────────────────────────────────────
-  detect:
+  diff-changed-apps:
     runs-on: ubuntu-24.04
     outputs:
       apps: ${{ steps.detect.outputs.apps }}
@@ -61,16 +61,16 @@ jobs:
           fi
 
   # ── Build flatpak inside gnome-49 container ────────────────────────────────
-  build:
-    needs: detect
-    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
+  compile-oci:
+    needs: diff-changed-apps
+    if: needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != ''
     runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.diff-changed-apps.outputs.apps) }}
         arch: [x86_64, aarch64]
         include:
           - arch: x86_64
@@ -241,23 +241,23 @@ jobs:
   # Single stable job name that requires all build matrix entries to pass.
   # This is what the branch ruleset requires as a status check.
   build-complete:
-    needs: [detect, build]
-    if: always() && needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
+    needs: [diff-changed-apps, compile-oci]
+    if: always() && needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != ''
     runs-on: ubuntu-24.04
     permissions: {}
     steps:
       - name: Check build results
         run: |
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "ERROR: build matrix did not fully succeed (result: ${{ needs.build.result }})" >&2
+          if [[ "${{ needs.compile-oci.result }}" != "success" ]]; then
+            echo "ERROR: build matrix did not fully succeed (result: ${{ needs.compile-oci.result }})" >&2
             exit 1
           fi
           echo "==> All build jobs passed"
 
   # ── Push OCI to ghcr.io with zstd:chunked ─────────────────────────────────
-  push:
-    needs: [detect, build]
-    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != '' && github.event_name != 'pull_request'
+  sign-and-push:
+    needs: [diff-changed-apps, compile-oci]
+    if: needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != '' && github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       packages: write
@@ -266,7 +266,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.diff-changed-apps.outputs.apps) }}
         arch: [x86_64, aarch64]
         include:
           - arch: x86_64
@@ -592,13 +592,9 @@ jobs:
           retention-days: 1
 
   # ── Merge per-arch digests into a single OCI image index ─────────────────
-  # Runs after ALL push matrix jobs complete (both x86_64 and aarch64).
-  # Produces the :latest and :vX.Y.Z manifest lists that point to per-arch
-  # staging digests. A single job running once per app avoids the race where
-  # concurrent per-arch jobs each overwrote :latest with a 1-platform manifest.
-  merge-index:
-    needs: [detect, push]
-    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != '' && github.event_name != 'pull_request'
+  publish-manifest-list:
+    needs: [diff-changed-apps, sign-and-push]
+    if: needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != '' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     permissions:
       packages: write
@@ -607,7 +603,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.diff-changed-apps.outputs.apps) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -758,9 +754,9 @@ jobs:
   # flatpak install with "manifest unknown". Staging tags accumulate (one
   # per build per arch) and are cleaned up manually via the cleanup.yml
   # workflow when needed.
-  cleanup:
-    needs: [detect, push, merge-index]
-    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != '' && github.event_name != 'pull_request'
+  annotate-packages:
+    needs: [diff-changed-apps, sign-and-push, publish-manifest-list]
+    if: needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != '' && github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       packages: write
@@ -768,7 +764,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.diff-changed-apps.outputs.apps) }}
         arch: [x86_64, aarch64]
         include:
           - arch: x86_64
@@ -819,9 +815,9 @@ jobs:
   # update-index.yml is triggered by workflow_run on this workflow completing
   # successfully — so install-test is an implicit gate: the index only updates
   # if install-test passes.
-  install-test:
-    needs: [detect, merge-index]
-    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != '' && github.event_name != 'pull_request'
+  e2e-install:
+    needs: [diff-changed-apps, publish-manifest-list]
+    if: needs.diff-changed-apps.outputs.apps != '[]' && needs.diff-changed-apps.outputs.apps != '' && github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
     permissions:
       packages: read
@@ -831,7 +827,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.diff-changed-apps.outputs.apps) }}
         arch: [x86_64, aarch64]
         include:
           - arch: x86_64
