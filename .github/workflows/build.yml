@@ -810,6 +810,7 @@ jobs:
       - name: Build and push OCI image indexes
         run: |
           APP="${{ matrix.app }}"
+          APP="${APP,,}"
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.repository }}"
 
@@ -880,6 +881,7 @@ jobs:
       - name: Verify image index shape
         run: |
           APP="${{ matrix.app }}"
+          APP="${APP,,}"
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.repository }}"
           echo "${{ secrets.GITHUB_TOKEN }}" | \
@@ -908,6 +910,7 @@ jobs:
       - name: Sign OCI image index with cosign
         run: |
           APP="${{ matrix.app }}"
+          APP="${APP,,}"
           REPO="${{ github.repository }}"
           # Sign :latest index (resolves to OCI image index digest)
           cosign sign --yes \
@@ -964,6 +967,7 @@ jobs:
       - name: Set package description
         run: |
           APP="${{ matrix.app }}"
+          APP_LOWER="${APP,,}"
           REPO_NAME="${{ github.event.repository.name }}"
           DESC_FILE="flatpaks/${APP}/release.yaml"
           if [[ -f "${DESC_FILE}" ]]; then
@@ -972,7 +976,7 @@ jobs:
             # Package name under owner is "reponame/appname" — URL-encode the slash.
             # Note: PATCH /user/packages/container/<name> returns 404 for user-scoped packages
             # (same limitation as visibility — web UI only). Best-effort, non-fatal.
-            ENCODED_NAME="${REPO_NAME}%2F${APP}"
+            ENCODED_NAME="${REPO_NAME}%2F${APP_LOWER}"
             if gh api --method PATCH "/user/packages/container/${ENCODED_NAME}" \
                 -f description="${DESCRIPTION}" 2>/dev/null; then
               echo "==> Set package description: ${DESCRIPTION}"
