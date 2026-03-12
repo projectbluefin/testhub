@@ -1,4 +1,5 @@
 # Bluefin's OCI Flatpak Remote
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/projectbluefin/testhub/badge)](https://scorecard.dev/viewer/?uri=github.com/projectbluefin/testhub)]
 
 An experimental Flatpak remote designed to prototype Flathub's transition to OCI. Someone promised me a magical land of shared storage and composefs, I guess we'll find out. 😄
 
