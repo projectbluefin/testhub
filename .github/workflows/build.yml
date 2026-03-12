@@ -1085,16 +1085,24 @@ jobs:
         if: steps.arch-check.outputs.skip != 'true'
         run: |
           APP_ID="${{ steps.app-meta.outputs.app_id }}"
+          # Read optional per-app launch args (e.g. --no-sandbox for Electron root runs)
+          LAUNCH_ARGS=""
+          if [[ -f "flatpaks/${{ matrix.app }}/release.yaml" ]]; then
+            LAUNCH_ARGS=$(yq -r '(.["x-launch-check"] // []) | join(" ")' \
+              "flatpaks/${{ matrix.app }}/release.yaml")
+          elif [[ -f "flatpaks/${{ matrix.app }}/manifest.yaml" ]]; then
+            LAUNCH_ARGS=$(yq -r '(.["x-launch-check"] // []) | join(" ")' \
+              "flatpaks/${{ matrix.app }}/manifest.yaml")
+          fi
           set +e
-          timeout 5 flatpak run "${APP_ID}"
+          # shellcheck disable=SC2086
+          timeout 5 flatpak run "${APP_ID}" ${LAUNCH_ARGS}
           EXIT=$?
           set -e
           if [[ "${EXIT}" -eq 0 ]]; then
             echo "==> PASS: ${APP_ID} ran and exited cleanly (exit 0)"
           elif [[ "${EXIT}" -eq 124 ]]; then
             echo "==> PASS: ${APP_ID} launched successfully (exit 124 — timed out, app did not self-exit)"
-            echo "    HINT: consider adding x-launch-check: [--version] to the app manifest for"
-            echo "    a cleaner headless smoke test (e.g. 'flatpak run ${APP_ID} --version')."
           else
             echo "ERROR: ${APP_ID} launch failed (exit ${EXIT})" >&2
             exit 1
