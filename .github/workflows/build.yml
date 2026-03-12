@@ -1066,11 +1066,10 @@ jobs:
           mkdir -p /var/lib/dbus && dbus-uuidgen | tee /var/lib/dbus/machine-id
           # gnome-49 container dbus config uses /app prefix for the socket path
           mkdir -p /app/var/run/dbus
-          # Create messagebus user required by dbus-daemon --system if missing
-          # useradd is not available in all containers (gnome-49 lacks it); try adduser as fallback
-          id messagebus >/dev/null 2>&1 || \
-            useradd --system --no-create-home messagebus 2>/dev/null || \
-            adduser --system --no-create-home messagebus 2>/dev/null || true
+          # Create messagebus user/group required by dbus-daemon --system if missing.
+          # gnome-49 container lacks useradd/adduser; write /etc/passwd and /etc/group directly.
+          grep -q '^messagebus:' /etc/group  || echo 'messagebus:x:111:'         >> /etc/group
+          grep -q '^messagebus:' /etc/passwd || echo 'messagebus:x:111:111::/:/sbin/nologin' >> /etc/passwd
           dbus-daemon --system --fork
 
       - name: Install ${{ matrix.app }}
