@@ -1,0 +1,7 @@
+{
+    "io.github.DenysMb.Kontainer": [
+        "appid-filename-mismatch",
+        "finish-args-desktopfile-filesystem-access",
+        "finish-args-flatpak-spawn-access"
+    ]
+}

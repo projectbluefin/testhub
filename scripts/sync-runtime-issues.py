@@ -244,6 +244,14 @@ def write_manifest(app_id: str, content: str, dry_run: bool) -> bool:
 
     target_dir.mkdir(parents=True, exist_ok=True)
     target_path.write_text(content)
+
+    # Write exceptions.json if not already present (appid-filename-mismatch is
+    # always required since we use manifest.yaml not <app-id>.yaml)
+    exceptions_path = target_dir / "exceptions.json"
+    if not exceptions_path.exists():
+        exceptions = {app_id: ["appid-filename-mismatch"]}
+        exceptions_path.write_text(json.dumps(exceptions, indent=4) + "\n")
+
     return True
 
 
