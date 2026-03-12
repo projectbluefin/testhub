@@ -93,6 +93,6 @@ modules:
     url: https://altlinux.space/alt-gnome/TunerTweaks.git
     tag: 0.5.0
     commit: 3ea544fd21765ef9437aca201622df7cfc976f7a
-x-version: ''
+x-version: '0.5.0'
 x-arches:
 - x86_64
