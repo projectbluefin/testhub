@@ -2,9 +2,10 @@
 
 An experimental Flatpak remote designed to prototype Flathub's transition to OCI. Someone promised me a magical land of shared storage and composefs, I guess we'll find out. 😄
 
-- Flatpak packaging pipeline with full automation
+- Uses [flatpak-tracker](http://github.com/ublue-os/flatpak-tracker) and auto imports, updates the runtime, builds, and then publishes a test flatpak so you can help Flathub reviewers with real testing!
+- Full flatpak packaging pipeline with full automation using all the latest container tech.
+  - [Chunkah](https://github.com/coreos/chunkah) and [zstd:chunked](https://github.com/containers/storage/blob/main/docs/containers-storage-zstd-chunked.md) enabled for partial pulls on the client
 - Serves the remote from GitHub Pages; pushes images to `ghcr.io/projectbluefin/testhub`
-- [Chunkah](https://github.com/coreos/chunkah) and [zstd:chunked](https://github.com/containers/storage/blob/main/docs/containers-storage-zstd-chunked.md) enabled for partial pulls on the client
 - Under no circumstance will this remote ever go to production
   - Things the core team wants to test (Ghostty, Goose) to hopefully aid in getting their flatpaks getting submitted to flathub.
   - Purpose is to gather data for using OCI for Flathub distribution.
