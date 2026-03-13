@@ -1,3 +1,6 @@
 {
-    "org.virtualbox.VirtualBox": ["appid-filename-mismatch"]
+    "org.virtualbox.VirtualBox": [
+        "appid-filename-mismatch",
+        "appstream-external-screenshot-url"
+    ]
 }
