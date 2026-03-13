@@ -50,17 +50,17 @@ If the change is CI-wide (affects all apps/jobs), trigger **both** before declar
 
 ## Flatpak installation policy
 
-Always install Flatpaks system-wide. Never use `--user`.
+Always install Flatpaks user-wide. Always use `--user`.
 
 ```bash
 # Correct
-flatpak install <remote> <app-id>
+flatpak install --user <remote> <app-id>
 
-# Wrong — never use --user
-flatpak --user install <remote> <app-id>
+# Wrong — never install system-wide
+flatpak install <remote> <app-id>
 ```
 
-This applies to all install operations: manual testing, validation steps, CI validation containers, and any instructions written in skills or documentation. If an upstream doc says `--user`, ignore it and use system-wide.
+This applies to all install operations: manual testing, validation steps, CI validation containers, and any instructions written in skills or documentation. If an upstream doc omits `--user`, add it.
 
 ## Skill usage — mandatory
 

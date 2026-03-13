@@ -30,7 +30,7 @@ This potentially unlocks all container registries and git forges as Flatpak host
 ### Add this remote
 
 ```
-flatpak remote-add --if-not-exists testhub oci+https://projectbluefin.github.io/testhub
+flatpak remote-add --user --if-not-exists testhub oci+https://projectbluefin.github.io/testhub
 ```
 
 ### Install packages
@@ -39,17 +39,46 @@ flatpak remote-add --if-not-exists testhub oci+https://projectbluefin.github.io/
 
 | Package | Description | Install |
 |---|---|---|
-| Ghostty | GPU-accelerated terminal emulator | `flatpak install testhub com.mitchellh.ghostty` |
-| Goose | Goose AI agent | `flatpak install testhub io.github.block.Goose` |
-| LM Studio | Local LLM inference | `flatpak install testhub ai.lmstudio.LMStudio` |
-| Firefox Nightly | Firefox Nightly browser | `flatpak install testhub org.mozilla.firefox.nightly` |
-| Thunderbird Nightly | Thunderbird Nightly email client | `flatpak install testhub org.mozilla.thunderbird.nightly` |
-| VirtualBox | Oracle VirtualBox | `flatpak install testhub org.virtualbox.VirtualBox` |
+| Ghostty | GPU-accelerated terminal emulator | `flatpak install --user testhub com.mitchellh.ghostty` |
+| Goose | Goose AI agent | `flatpak install --user testhub io.github.block.Goose` |
+| LM Studio | Local LLM inference | `flatpak install --user testhub ai.lmstudio.LMStudio` |
+| Firefox Nightly | Firefox Nightly browser | `flatpak install --user testhub org.mozilla.firefox.nightly` |
+| Thunderbird Nightly | Thunderbird Nightly email client | `flatpak install --user testhub org.mozilla.thunderbird.nightly` |
+| VirtualBox | Oracle VirtualBox | `flatpak install --user testhub org.virtualbox.VirtualBox` |
+
+<details>
+<summary>Copy/paste install commands</summary>
+
+```bash
+flatpak install --user testhub com.mitchellh.ghostty
+```
+
+```bash
+flatpak install --user testhub io.github.block.Goose
+```
+
+```bash
+flatpak install --user testhub ai.lmstudio.LMStudio
+```
+
+```bash
+flatpak install --user testhub org.mozilla.firefox.nightly
+```
+
+```bash
+flatpak install --user testhub org.mozilla.thunderbird.nightly
+```
+
+```bash
+flatpak install --user testhub org.virtualbox.VirtualBox
+```
+
+</details>
 
 ### Update all
 
 ```
-flatpak update
+flatpak update --user
 ```
 
 ### Checking the Signature

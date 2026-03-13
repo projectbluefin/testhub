@@ -14,20 +14,20 @@ Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in i
 | virtualbox | `flatpaks/virtualbox/GOTCHAS.md` | KVM backend (no vboxdrv kernel module), X11 only (VBoxSVGA Wayland bug), hardening disabled, gsoap serial build, shared-modules SDL1+GLU inlined |
 | org.altlinux.Tuner | (inline in `app-gotchas.md`) | `libpeas` 2.x requires `-Dgjs=false` on GNOME Platform 49 (mozjs-128 not available) |
 
-## Flatpak install scope — always system-wide
+## Flatpak install scope — always user-wide
 
-When installing any app for manual testing or validation, always install system-wide.
-Never pass `--user`.
+When installing any app for manual testing or validation, always install user-wide.
+Always pass `--user`.
 
 ```bash
 # Correct
-flatpak install <remote> <app-id>
+flatpak install --user <remote> <app-id>
 
-# Wrong — never use --user
-flatpak --user install <remote> <app-id>
+# Wrong — never install system-wide
+flatpak install <remote> <app-id>
 ```
 
-If an upstream doc or CI example uses `--user`, ignore it and use system-wide instead.
+If an upstream doc or CI example omits `--user`, add it.
 
 ## flatpak-tracker issue body format
 
