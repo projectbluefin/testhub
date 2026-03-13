@@ -39,19 +39,55 @@ the artifact. For the `github-releases` datasource, Renovate does **not** downlo
 sha256. Validate when Renovate first opens a goose/ghostty update PR — a post-merge manual
 sha256 check or separate verification step may be needed.
 
+### customManagers use RE2, not ECMAScript regex
+
+Renovate's regex manager uses RE2, which **does not support** lookahead or lookbehind
+assertions (`(?!...)`, `(?=...)`, `(?<!...)`, `(?<=...)`). Using them causes a config
+validation error.
+
+**Wrong (lookahead — invalid in RE2):**
+```
+(?:(?!version:|url:)[^\n]*\n)*
+```
+
+**Correct (bounded repetition — RE2-safe):**
+```
+(?:[^\n]*\n){0,5}
+```
+
+Set the upper bound to cover the maximum number of intervening lines across all apps.
+`goose/release.yaml` has 2 intervening lines; the limit is set to 5 as headroom.
+
+### `extractVersion` is not valid inside `customManagers`
+
+The correct field is `extractVersionTemplate`. Using `extractVersion` inside a
+`customManagers` entry causes a config validation error.
+
+**Wrong:**
+```json
+{ "customType": "regex", ..., "extractVersion": "^v?(?<version>.*)$" }
+```
+
+**Correct:**
+```json
+{ "customType": "regex", ..., "extractVersionTemplate": "^v?(?<version>.*)$" }
+```
+
+`extractVersion` is a top-level / `packageRules`-level option only.
+
 ### release.yaml regex requires non-adjacent version/url
 
 `goose/release.yaml` has a comment and `arches:` line between `version:` and `url:`. The
-regex uses a non-greedy skip pattern to handle this:
+regex uses bounded repetition (RE2-safe) to skip intervening lines:
 
 ```
 version:\s*(?<currentValue>...)
-(?:(?!version:|url:)[^\n]*\n)*   ← skips comment/config lines
+(?:[^\n]*\n){0,5}   ← skips up to 5 comment/config lines (RE2-safe)
 url:\s*...
 ```
 
-If new `release.yaml` apps are added with more than ~3 intervening lines between `version:`
-and `url:`, verify the match still works with a Python test.
+If new `release.yaml` apps are added with more than 5 intervening lines between `version:`
+and `url:`, increase the bound and verify with a Python test.
 
 ### autoReplaceStringTemplate fragility
 

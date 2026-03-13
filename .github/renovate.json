@@ -31,7 +31,7 @@
       "description": "Update release.yaml bundle-repack packages: version, url, and sha256 fields (allows intervening comment/config lines between version and url)",
       "fileMatch": ["^flatpaks/[^/]+/release\\.yaml$"],
       "matchStrings": [
-        "version:\\s*(?<currentValue>v?[0-9]+\\.[0-9.]+[^\\n]*)\\n(?:(?!version:|url:)[^\\n]*\\n)*url:\\s*(?<urlPrefix>https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/)v?[0-9]+\\.[0-9.]+[^/]*/(?<urlSuffix>[^\\n]+)\\nsha256:\\s*(?<currentDigest>[0-9a-f]{64})"
+        "version:\\s*(?<currentValue>v?[0-9]+\\.[0-9.]+[^\\n]*)\\n(?:[^\\n]*\\n){0,5}url:\\s*(?<urlPrefix>https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/)v?[0-9]+\\.[0-9.]+[^/]*/(?<urlSuffix>[^\\n]+)\\nsha256:\\s*(?<currentDigest>[0-9a-f]{64})"
       ],
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver-coerced",
@@ -46,7 +46,7 @@
       ],
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver-coerced",
-      "extractVersion": "^v?(?<version>.*)$",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "autoReplaceStringTemplate": "x-version: \"{{{newValue}}}\"\nurl: https://github.com/{{{depName}}}/archive/refs/tags/v{{{newValue}}}.tar.gz\nsha256: {{{newDigest}}}"
     },
     {
@@ -81,7 +81,7 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "oras-project/oras",
       "versioningTemplate": "semver-coerced",
-      "extractVersion": "^v?(?<version>.*)$"
+      "extractVersionTemplate": "^v?(?<version>.*)$"
     }
   ]
 }
