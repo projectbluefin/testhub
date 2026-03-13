@@ -33,6 +33,21 @@ that area.
 When triggering a manual test build, always use `goose` (bundle-repack, fastest — no compile step).
 Never use `ghostty` for test builds (full Zig compile via flatpak-builder, very slow).
 
+## CI validation gate
+
+**A goose-only green run is not sufficient to declare any CI change complete.**
+
+goose is a `release.yaml` app with a `url` field. It exercises a different code path than
+`manifest.yaml` apps and apps without a `url` field (ghostty, thunderbird-nightly, virtualbox).
+
+**Before merging any change to `build.yml`, `Justfile`, or `update-index.yml`:**
+
+- Smoke test (fast): `goose` — catches most regressions quickly
+- Full gate: must also pass for at least one `manifest.yaml` app with no `url` field
+
+Use `thunderbird-nightly` as the second app (x86_64-only, no Zig compile, faster than ghostty).
+If the change is CI-wide (affects all apps/jobs), trigger **both** before declaring complete.
+
 ## Flatpak installation policy
 
 Always install Flatpaks system-wide. Never use `--user`.

@@ -626,7 +626,7 @@ push-manifest-list app registry="ghcr.io":
     fi
 
     # Collect per-arch digests
-    declare -A ARCH_DIGESTS
+    declare -A ARCH_DIGESTS=()
     for ARCH in x86_64 aarch64; do
         DIGEST_FILE="/tmp/digests/${ARCH}/digest.txt"
         if [[ -f "${DIGEST_FILE}" ]]; then

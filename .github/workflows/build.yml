@@ -369,7 +369,7 @@ jobs:
             || echo "==> No version — only :latest will be pushed"
           URL=$(just metadata '${{ matrix.app }}' url 2>/dev/null || echo "")
           [[ "${URL}" == "null" ]] && URL=""
-          [[ -n "${URL}" ]] && echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"
+          [[ -n "${URL}" ]] && echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV" || true
 
       - name: Download OCI artifact
         if: steps.arch-check.outputs.skip != 'true'
