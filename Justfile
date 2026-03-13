@@ -436,8 +436,9 @@ build app="ghostty":
       ' > /dev/null \
       && echo "All required labels present."
     # Push to ghcr.io with zstd:chunked
+    # -f oci ensures mediaType is present in manifest descriptors (required by flatpak install)
     gh auth token | podman login ghcr.io --username "${GH_OWNER}" --password-stdin
-    podman push --compression-format=zstd:chunked \
+    podman push -f oci --compression-format=zstd:chunked \
       --digestfile "/tmp/${APP}-ghcr-digest.txt" \
       "${CHUNKED_ID}" "docker://ghcr.io/${GH_REPO}/${APP}:latest-${ARCH}"
     GHCR_DIGEST=$(cat "/tmp/${APP}-ghcr-digest.txt")
@@ -445,11 +446,11 @@ build app="ghostty":
     # Version and stable tags — set for bundle-repack; for manifest.yaml apps, requires x-version field
     if [[ -n "${VERSION:-}" ]]; then
         echo "==> Pushing version tag: ${VERSION}-${ARCH}"
-        skopeo copy --compression-format=zstd:chunked --dest-creds "${GH_OWNER}:$(gh auth token)" \
+        skopeo copy -f oci --compression-format=zstd:chunked --dest-creds "${GH_OWNER}:$(gh auth token)" \
           "containers-storage:${CHUNKED_ID}" \
           "docker://ghcr.io/${GH_REPO}/${APP}:${VERSION}-${ARCH}"
         echo "==> Pushing stable tag"
-        skopeo copy --compression-format=zstd:chunked --dest-creds "${GH_OWNER}:$(gh auth token)" \
+        skopeo copy -f oci --compression-format=zstd:chunked --dest-creds "${GH_OWNER}:$(gh auth token)" \
           "containers-storage:${CHUNKED_ID}" \
           "docker://ghcr.io/${GH_REPO}/${APP}:stable-${ARCH}"
         echo "==> Tags pushed: latest-${ARCH}, ${VERSION}-${ARCH}, stable-${ARCH}"
@@ -577,8 +578,11 @@ push app arch registry="ghcr.io":
     fi
 
     # Push :latest-<arch> with zstd:chunked
+    # -f oci ensures the OCI manifest descriptor in the remote index.json includes
+    # mediaType, which flatpak requires when mirroring to its local child OCI registry.
     TARGET="${REGISTRY}/${GH_REPO}/${APP_LOWER}:latest-${ARCH}"
     podman push \
+        -f oci \
         --compression-format=zstd:chunked \
         --digestfile "/tmp/digest.txt" \
         "${CHUNKED_ID}" "docker://${TARGET}"
@@ -588,9 +592,11 @@ push app arch registry="ghcr.io":
     # Version and stable tags
     if [[ -n "${VERSION}" ]]; then
         podman push \
+            -f oci \
             --compression-format=zstd:chunked \
             "${CHUNKED_ID}" "docker://${REGISTRY}/${GH_REPO}/${APP_LOWER}:${VERSION}-${ARCH}"
         podman push \
+            -f oci \
             --compression-format=zstd:chunked \
             "${CHUNKED_ID}" "docker://${REGISTRY}/${GH_REPO}/${APP_LOWER}:stable-${ARCH}"
         echo "==> Tags pushed: latest-${ARCH}, ${VERSION}-${ARCH}, stable-${ARCH}"
