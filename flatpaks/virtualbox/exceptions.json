@@ -1,6 +1,7 @@
 {
     "org.virtualbox.VirtualBox": [
         "appid-filename-mismatch",
-        "appstream-external-screenshot-url"
+        "appstream-external-screenshot-url",
+        "appstream-screenshots-not-mirrored-in-ostree"
     ]
 }
