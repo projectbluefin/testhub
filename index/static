@@ -150,6 +150,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/org.altlinux.tuner",
+      "Images": [
+        {
+          "Digest": "sha256:4f861879c65b2d02975345352eebcd84ba97091bcd46eb6d4e8b3786088bd2f6",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/org.altlinux.Tuner/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=org.altlinux.Tuner\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=tuner\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=dri;\nfilesystems=xdg-run/dconf;host-os:ro;xdg-config/dconf;\n\n[Session Bus Policy]\nca.desrt.dconf=talk\n\n[Environment]\nGIO_EXTRA_MODULES=/app/lib/gio/modules\n\n[Extension org.altlinux.Tuner.Plugin]\ndirectory=extensions\nautodelete=true\nno-autodownload=true\nsubdirectories=true\nmerge-dirs=lib/tuner/plugins;share\n\n[Extension org.altlinux.Tuner.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension org.altlinux.Tuner.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.altlinux.Tuner.Locale;org.altlinux.Tuner.Debug;",
+            "org.flatpak.installed-size": "1811456",
+            "org.flatpak.download-size": "534770"
+          }
+        }
+      ]
     }
   ]
 }
