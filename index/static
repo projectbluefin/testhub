@@ -100,7 +100,7 @@
       "Name": "projectbluefin/testhub/virtualbox",
       "Images": [
         {
-          "Digest": "sha256:9af80394e00dd9717208cc3f605c66402205aa5d10db40e07a98d24f7f7732cf",
+          "Digest": "sha256:0401a9aad09d4b06dc1457325fcc7766262a235bb9690a42a076f995bdbac37b",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
