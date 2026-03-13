@@ -23,8 +23,8 @@ jobs:
           # Extract latest version tag from upstream README (e.g. "v0.3.0")
           UPSTREAM_VER=$(curl -fsSL https://raw.githubusercontent.com/coreos/chunkah/main/README.md \
             | grep -oP 'releases/download/\Kv[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          # Extract pinned version from CHUNKAH_SPLITTER URL in build.yml
-          CURRENT_VER=$(grep -oP 'releases/download/\Kv[0-9]+\.[0-9]+\.[0-9]+' \
+          # Extract pinned version from chunkah container image tag in build.yml
+          CURRENT_VER=$(grep -oP 'quay\.io/jlebon/chunkah:\Kv[0-9]+\.[0-9]+\.[0-9]+' \
             .github/workflows/build.yml | head -1)
           echo "Upstream chunkah version: ${UPSTREAM_VER}"
           echo "Pinned chunkah version:   ${CURRENT_VER}"
@@ -32,7 +32,7 @@ jobs:
             echo "chunkah version drift detected"
             gh issue create \
               --title "chunkah: upstream is ${UPSTREAM_VER}, pinned to ${CURRENT_VER}" \
-              --body "Upstream chunkah README references \`${UPSTREAM_VER}\` but \`build.yml\` pins \`${CURRENT_VER}\`. Update \`CHUNKAH_SPLITTER\` in \`.github/workflows/build.yml\` and verify the invocation pattern has not changed." \
+              --body "Upstream chunkah README references \`${UPSTREAM_VER}\` but \`build.yml\` and \`Justfile\` pin \`${CURRENT_VER}\`. Update \`chunkah_image\` in \`Justfile\` and the image tag in \`.github/workflows/build.yml\`, then verify the invocation pattern has not changed." \
               --label "maintenance" || true
           else
             echo "chunkah version matches upstream — no drift"
