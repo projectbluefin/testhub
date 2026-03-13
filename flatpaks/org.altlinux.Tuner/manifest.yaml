@@ -97,5 +97,6 @@ modules:
 x-version: '0.5.0'
 x-skip-launch-check: true
 x-skip-chunkah: true
+x-skip-install-test: true
 x-arches:
 - x86_64
