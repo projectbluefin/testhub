@@ -4,6 +4,7 @@ runtime-version: "49"
 sdk: org.gnome.Sdk
 default-branch: stable
 x-chunkah-max-layers: "8"
+x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
 command: ghostty
 finish-args:
   - --device=all  # Required: GPU access (Vulkan/Metal) and PTY device access for terminal

@@ -3,17 +3,27 @@ name: Sync Flatpak Remote Index
 # Triggered after each "Build → Sign → Publish Flatpak OCI" run completes successfully.
 # Running as a separate workflow serialises all gh-pages pushes — no race
 # between concurrent app builds writing to the same branch.
+#
+# Job order enforces a strict gate:
+#   prepare → e2e-install → commit-index
+#
+# The gh-pages index is only committed AFTER e2e-install passes.
+# This prevents the index from pointing at a broken image that cannot be installed.
 
 on:
   workflow_run:
     workflows: ["Build → Sign → Publish Flatpak OCI"]
     types: [completed]
 
-# Top-level: deny all. This job only needs to write gh-pages and read packages.
+# Top-level: deny all. Jobs request only what they need.
 permissions: {}
 
 jobs:
-  update-index:
+  # ── Prepare: build updated index content and derive e2e matrix ────────────
+  # Downloads per-arch digest artifacts from the triggering build run,
+  # runs update-index.py against ghcr.io, and uploads the result as an artifact.
+  # Does NOT commit to gh-pages yet — that happens only after e2e-install passes.
+  prepare:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       (github.event.workflow_run.event == 'push' ||
@@ -21,17 +31,12 @@ jobs:
        github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
       packages: read
       actions: read
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       has_entries: ${{ steps.matrix.outputs.has_entries }}
-    # Serialise gh-pages pushes — prevents race if two workflow_run events fire
-    # before the first has committed.
-    concurrency:
-      group: gh-pages-update
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -85,18 +90,12 @@ jobs:
               --tags "latest"
           done
 
-      - name: Commit and push index
-        run: |
-          cd pages
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index/static
-          if git diff --cached --quiet; then
-            echo "index unchanged, skipping commit"
-          else
-            git commit -m "chore(index): update from build ${{ github.event.workflow_run.run_number }} [skip ci]"
-            git push
-          fi
+      - name: Upload prepared index as artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: prepared-index-${{ github.run_id }}
+          path: pages/index/static
+          retention-days: 1
 
       - name: Build app+arch matrix from digest artifacts
         id: matrix
@@ -123,13 +122,15 @@ jobs:
           echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
           echo "has_entries=$(echo "${MATRIX}" | python3 -c 'import sys,json; d=json.load(sys.stdin); print("true" if d.get("include") else "false")')" >> "$GITHUB_OUTPUT"
 
-  # ── E2E install test (runs AFTER gh-pages index is fresh) ─────────────────
+  # ── E2E install test ──────────────────────────────────────────────────────
+  # Gate: runs BEFORE gh-pages is updated. The index is only committed if this passes.
+  # Installs from ghcr.io directly (images are live there regardless of gh-pages state).
+  #
   # Launch check: exit 0 = clean exit (PASS), exit 124 = timeout/headless GUI (PASS), other = FAIL
-  # Runs AFTER update-index so the install test always uses the freshly-pushed image from
-  # the live gh-pages index — eliminates the stale-digest class of bugs.
+  # Apps that cannot launch headless must set x-skip-launch-check: true in their manifest.
   e2e-install:
-    needs: [update-index]
-    if: needs.update-index.outputs.has_entries == 'true'
+    needs: [prepare]
+    if: needs.prepare.outputs.has_entries == 'true'
     runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     permissions:
       packages: read
@@ -138,7 +139,7 @@ jobs:
       options: --privileged
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.update-index.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -159,3 +160,46 @@ jobs:
         run: |
           APP_ID=$(just metadata '${{ matrix.app }}' app-id 2>/dev/null || echo "")
           [[ -n "${APP_ID}" ]] && flatpak uninstall --system --noninteractive "${APP_ID}" || true
+
+  # ── Commit index to gh-pages ──────────────────────────────────────────────
+  # Only runs after e2e-install passes — the gate is enforced by needs: [e2e-install].
+  # Downloads the prepared index artifact from the prepare job and commits it.
+  # Serialised via concurrency group to prevent races between concurrent builds.
+  commit-index:
+    needs: [prepare, e2e-install]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.e2e-install.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: gh-pages-update
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: gh-pages
+
+      - name: Sync gh-pages before writing
+        run: git fetch origin gh-pages && git rebase origin/gh-pages
+
+      - name: Download prepared index artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: prepared-index-${{ github.run_id }}
+          path: index/static
+
+      - name: Commit and push index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index/static
+          if git diff --cached --quiet; then
+            echo "index unchanged, skipping commit"
+          else
+            git commit -m "chore(index): update from build ${{ github.event.workflow_run.run_number }} [skip ci]"
+            git push
+          fi

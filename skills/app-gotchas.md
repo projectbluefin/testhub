@@ -145,3 +145,18 @@ not appear in the installed Flatpak unless the upstream bundle already includes 
 
 Applies to: **goose** (bundle-repack path). All other apps use `manifest.yaml`
 (flatpak-builder) and install metainfo directly.
+
+## GUI apps — x-skip-launch-check required
+
+Any app that requires a Wayland or X11 display will exit 1 immediately in headless CI (gnome-49 container has no display server). The `timeout 5 flatpak run` launch check treats exit 1 as FAIL, not as PASS. It only passes on exit 0 (clean self-exit) or exit 124 (timeout — app stayed running).
+
+**Symptom:** `e2e-install` fails with `WARNING: Gtk: Failed to open display` / `ERROR: <app-id> launch failed (exit 1)`.
+
+**Fix:** add `x-skip-launch-check: true` to the app's `manifest.yaml` (or `release.yaml`).
+
+Apps that need this flag: any GTK, Qt, Electron, or other GUI app that opens a window on startup. CLI apps and apps with `--version`/`--help` exit paths do not need it.
+
+**Structural safeguard:** `update-index.yml` runs `e2e-install` before committing to gh-pages (`prepare → e2e-install → commit-index`). A failing launch check blocks the index commit — the stale index is never published. But fixing `x-skip-launch-check` is still required; the structural gate is a last resort, not a substitute.
+
+**Known apps with this flag:**
+- `ghostty` — GTK4/Wayland terminal, exits 1 with "Failed to open display" in CI
