@@ -81,9 +81,11 @@ flatpak install --user testhub org.virtualbox.VirtualBox
 flatpak update --user
 ```
 
-### Checking the Signature
+### Verifying the image
 
-All images are signed with [cosign](https://docs.sigstore.dev/cosign/overview/) keyless signing via GitHub Actions OIDC. Replace `<app>` with the app name (e.g. `goose`):
+All images are signed and include an SPDX SBOM. Replace `<app>` with the app name (e.g. `goose`).
+
+Verify the signature:
 
 ```bash
 cosign verify \
@@ -92,11 +94,13 @@ cosign verify \
   ghcr.io/projectbluefin/testhub/<app>:latest
 ```
 
-Exit 0 means the signature is valid. Output is JSON with the certificate details (workflow ref, commit SHA, build timestamp).
+Exit 0 means valid. See all attached supply chain artifacts:
 
-### Checking the SBOMs
+```bash
+cosign tree ghcr.io/projectbluefin/testhub/<app>:latest
+```
 
-SBOM attestations (SPDX format) are attached to every image. Replace `<app>` as above:
+Inspect the SBOM:
 
 ```bash
 cosign verify-attestation \
@@ -104,7 +108,11 @@ cosign verify-attestation \
   --certificate-identity=https://github.com/projectbluefin/testhub/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   ghcr.io/projectbluefin/testhub/<app>:latest \
-  | jq '.payload | @base64d | fromjson'
+  | jq '.payload | @base64d | fromjson | .predicate'
 ```
 
-Output is the full SPDX document listing all packages and dependencies in the image.
+Scan for vulnerabilities:
+
+```bash
+grype registry:ghcr.io/projectbluefin/testhub/<app>:latest
+```

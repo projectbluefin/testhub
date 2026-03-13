@@ -745,6 +745,43 @@ jobs:
             echo "==> Signed ghcr.io/${REPO}/${APP}:${VERSION}"
           fi
 
+      - name: Attest SBOMs to manifest list
+        run: |
+          APP="${{ matrix.app }}"
+          APP="${APP,,}"
+          REPO="${{ github.repository }}"
+          # Resolve the manifest list digest for :latest
+          INDEX_DIGEST=$(skopeo inspect --raw "docker://ghcr.io/${REPO}/${APP}:latest" \
+            | sha256sum | awk '{print "sha256:" $1}')
+          echo "==> Manifest list digest: ${INDEX_DIGEST}"
+          # Download SBOM artifacts for each arch and attest to the manifest list
+          for ARCH in x86_64 aarch64; do
+            ARTIFACT="sbom-${{ matrix.app }}-${ARCH}"
+            mkdir -p "/tmp/sboms/${ARCH}"
+            if gh api "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+                --jq ".artifacts[] | select(.name == \"${ARTIFACT}\") | .id" \
+                | grep -q .; then
+              gh run download "${{ github.run_id }}" \
+                --name "${ARTIFACT}" \
+                --dir "/tmp/sboms/${ARCH}"
+              # anchore/sbom-action uploads the file as-is; find it regardless of exact filename
+              SBOM_PATH=$(find "/tmp/sboms/${ARCH}" -name "*.spdx.json" | head -1)
+              if [[ -n "${SBOM_PATH}" ]]; then
+                cosign attest --yes \
+                  --predicate "${SBOM_PATH}" \
+                  --type spdxjson \
+                  "ghcr.io/${REPO}/${APP}@${INDEX_DIGEST}"
+                echo "==> Attested ${ARCH} SBOM to manifest list"
+              else
+                echo "==> WARNING: no .spdx.json found in ${ARTIFACT} — skipping ${ARCH}"
+              fi
+            else
+              echo "==> No SBOM artifact for ${ARCH} (arch not built) — skipping"
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ── Set package description ───────────────────────────────────────────────
   # NOTE: Staging tags not deleted — see skills/pipeline.md "Staging tags".
   annotate-packages:
