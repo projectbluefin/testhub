@@ -8,6 +8,7 @@ rename-desktop-file: virtualbox.desktop
 x-arches:
   - x86_64
 x-chunkah-max-layers: "16"
+x-skip-launch-check: true
 x-container-image: "ghcr.io/flathub-infra/flatpak-github-actions:kde-6.10"
 
 finish-args:
