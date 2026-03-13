@@ -344,6 +344,88 @@ cosign verify \
 Apply the same regexp to `cosign verify-attestation`. Never use `--certificate-identity`
 with a literal `@${{ github.ref }}` in any workflow that runs on `merge_group` events.
 
+## CI environment differences
+
+Two distinct runner environments are used. Assuming tool availability in the wrong context is a common source of CI failures.
+
+| Job | Runner | Container |
+|---|---|---|
+| `compile-oci`, `e2e-install` | ubuntu-24.04 | **gnome-49** (flatpak-builder, ostree, buildah, yq after install, python3) |
+| `sign-and-push`, `publish-manifest-list`, `annotate-packages` | ubuntu-24.04 | **bare** (no container; podman+buildah via Homebrew, cosign via action, oras via download, skopeo, gh) |
+
+### `just` availability
+
+- gnome-49 container jobs: `just` must be installed explicitly before the first `just` call (add an "Install just" step)
+- bare ubuntu-24.04 jobs: same — `just` is not pre-installed on any runner; always add the install step
+
+### `brew` PATH on ubuntu-24.04
+
+`brew` is at `/home/linuxbrew/.linuxbrew/bin/brew` on ubuntu-24.04 runners and is **not on PATH** inside `just` subshells. Reference it by full path or add to PATH explicitly:
+
+```bash
+export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+brew install ...
+```
+
+### oras version requirement
+
+`oras manifest index create` was added in **oras v1.3.0**. Pinning to v1.2.x or earlier will fail with "unknown command". Always use oras >= v1.3.0 for manifest index operations.
+
+## Bash safety in GitHub Actions `run:` blocks
+
+Under `bash -e` (the default for Actions `run:` blocks), a conditional that evaluates false **as the last command** exits the step with code 1.
+
+**Danger pattern:**
+```bash
+[[ -n "${URL}" ]] && echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"
+```
+When `URL` is empty, `[[ -n "" ]]` is false and the `&&` short-circuits. The step exits 1.
+
+**Fix:** always append `|| true` or use an `if` block:
+```bash
+[[ -n "${URL}" ]] && echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV" || true
+# or
+if [[ -n "${URL}" ]]; then echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"; fi
+```
+
+This applies to any bare `[[` condition, `&&`-chain, or command that may legitimately fail as the final line of a `run:` block.
+
+## `just` recipe Bash patterns
+
+### Heredoc syntax
+
+`<<'EOF'` heredocs in `just` recipes cause parser errors. Use `printf` instead:
+
+```bash
+# Wrong — causes just parse error
+cat <<'EOF'
+...
+EOF
+
+# Correct
+printf '%s\n' '...'
+```
+
+### Bracket syntax in non-shebang recipes
+
+`[ -f ... ]` can be misinterpreted by the just parser in non-shebang recipes. Use `test -f` form, or switch to a shebang recipe (`#!/usr/bin/env bash`).
+
+### `$$` expansion
+
+`@`-prefix just recipes do NOT expand `$$` to `$` — only shebang-style recipes handle this correctly. Use shebang-style recipes (`#!/usr/bin/env bash`) for any recipe that uses `$$` or complex bash syntax.
+
+## yq null-coalescing syntax
+
+yq uses `// ""` (empty string literal) as the null-coalescing operator, NOT `// empty` (which is jq syntax and fails with yq):
+
+```bash
+# Wrong — jq syntax, fails with yq
+yq '.key // empty' file.yaml
+
+# Correct
+yq '.key // ""' file.yaml
+```
+
 ## Staging tags — do NOT delete
 
 Staging tags (`sha-<sha>-<arch>`) are intentionally permanent. ghcr.io permanently
