@@ -7,6 +7,6 @@ sha256: f74d47cc61bb0e6d1fc41327fcf3b359408158c24216d96782b2854cb3599765
 title: Goose
 description: Goose AI agent - Flatpak repack
 license: Apache-2.0
-chunkah-max-layers: "16"
+chunkah-max-layers: "32"
 x-skip-launch-check: true
 
