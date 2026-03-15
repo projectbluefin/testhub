@@ -3,6 +3,14 @@
 Renovate manages dependency pins in this repo via the self-hosted runner at
 `projectbluefin/renovate-config`, which fires every 30 minutes.
 
+## When to Use
+- Debugging why a dependency isn't auto-updated
+- Adding a new app or datasource to Renovate config
+
+## When NOT to Use
+- Pipeline or CI mechanics → `skills/pipeline.md`
+- Understanding nightly update workflows → see "Apps with no Renovate coverage" below
+
 ## Runner / org config
 
 - Runner repo: `projectbluefin/renovate-config`
@@ -28,12 +36,13 @@ Renovate manages dependency pins in this repo via the self-hosted runner at
 - `lmstudio` — CDN URL (`installers.lmstudio.ai`), no standard datasource
 - `firefox-nightly` / `thunderbird-nightly` — Mozilla rolling nightly, no version tags.
   The version string (`150.0a1`) never changes; Mozilla rebuilds daily at the same URL.
-  **Handled by:** `.github/workflows/update-mozilla-nightly.yml` runs weekly (Monday 6am UTC)
-  to re-download each tarball, recompute sha256, update the manifests, commit to main, and
-  trigger rebuilds for any app whose sha256 changed.
-  **Note:** The branch protection merge queue prevents direct pushes from `GITHUB_TOKEN`;
-  the workflow opens a PR on a `chore/nightly-sha256-YYYYMMDD` branch with auto-merge
-  enabled. The merge queue build validates the updated sha256s, then auto-merges to main.
+  **Handled by:** `.github/workflows/update-mozilla-nightly.yml` runs every 12h via ETag-based
+  check: uses `actions/cache` to store ETags between runs and only downloads full tarballs
+  when the ETag changes. Opens a PR on `chore/nightly-sha256-YYYYMMDD` (never pushes directly
+  to `main` — `GITHUB_TOKEN` cannot push to a protected branch with a merge queue).
+  **CI limitation:** PRs opened by `GITHUB_TOKEN` do NOT trigger `pull_request` CI events
+  (GitHub security policy). Configure a PAT secret (`NIGHTLY_UPDATE_TOKEN`) to fix this;
+  not yet set up. Until then, manually dispatch the build workflow on the PR branch.
 - `virtualbox` — uses `x-checker-data` (flathub tooling), not regex
 - `org.altlinux.Tuner` / `io.github.DenysMb.Kontainer` — git tags at non-GitHub forges
 

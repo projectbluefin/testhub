@@ -2,6 +2,14 @@
 
 Every package must carry an explicit version tag on ghcr.io in addition to `:latest`.
 
+## When to Use
+- Changing `x-version`, `version`, source URL, or OCI tag logic
+- Adding a new app and setting its version fields
+
+## When NOT to Use
+- OCI label mechanics → `skills/flatpak-labels.md`
+- Renovate version tracking → `skills/renovate.md`
+
 ## Tag convention
 
 | Build path | Version source | Tags pushed |

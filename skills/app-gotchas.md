@@ -3,6 +3,16 @@
 Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in its
 `flatpaks/<app>/` directory — load that file when working on the relevant app.
 
+## When to Use
+- Adding a new app or hitting a build/lint quirk
+- Debugging finish-args, metainfo, or icon issues
+
+## When NOT to Use
+- Pipeline or CI mechanics → `skills/pipeline.md`
+- OCI label preservation → `skills/flatpak-labels.md`
+
+## App summary
+
 | App | File | Key issues |
 |---|---|---|
 | ghostty | `flatpaks/ghostty/GOTCHAS.md` | sandbox escape (`--talk-name=org.freedesktop.Flatpak`), aggressive `*.so`/`*.a` cleanup globs, 10s cold-start delay (FlatpakHostCommand via Development interface, under investigation) |
@@ -13,6 +23,14 @@ Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in i
 | thunderbird-nightly | `flatpaks/thunderbird-nightly/GOTCHAS.md` | x86_64 only (no aarch64), comm-central icon pinning — verify each size sha256 independently (swap of 32/64 was a bug), `--persist=.thunderbird-nightly` profile isolation, no BaseApp pre-install needed, extension stubs created in build-commands (not cleanup-commands), permanent lint exceptions: `metainfo-missing-screenshots` + `appstream-missing-developer-name` (builddir) + `appstream-screenshots-not-mirrored-in-ostree` (repo) |
 | virtualbox | `flatpaks/virtualbox/GOTCHAS.md` | KVM backend (no vboxdrv kernel module), X11 only (VBoxSVGA Wayland bug), hardening disabled, gsoap serial build, shared-modules SDL1+GLU inlined, permanent lint exceptions: `appstream-external-screenshot-url` (builddir) + `appstream-screenshots-not-mirrored-in-ostree` (repo) — screenshots hosted at external URLs |
 | org.altlinux.Tuner | (inline in `app-gotchas.md`) | `libpeas` 2.x requires `-Dgjs=false` on GNOME Platform 49 (mozjs-128 not available) |
+| rancher-desktop | (inline in `app-gotchas.md`) | x86_64 only, Electron, upstream icon 2134×2134 (pre-resize required), `--no-sandbox` wrapper, `--device=all` for KVM |
+
+## Electron apps — general notes
+
+For every Electron app, always:
+- Add `elf-arch-multiple-found` to `exceptions.json` — Electron bundles x86_64 and arm64 ELF binaries inside a single package; this is expected.
+- Check for `finish-args-home-filesystem-access` — many Electron apps request `--filesystem=home`; add exception if intentional and document why.
+- Verify icon dimensions before installing — upstream icons may not be 512×512. Pre-resize to exactly 512×512 or appstream validation fails (build succeeds but `flatpak-builder-lint` errors).
 
 ## Flatpak install scope — always user-wide
 
@@ -160,3 +178,33 @@ Apps that need this flag: any GTK, Qt, Electron, or other GUI app that opens a w
 
 **Known apps with this flag:**
 - `ghostty` — GTK4/Wayland terminal, exits 1 with "Failed to open display" in CI
+
+## rancher-desktop
+
+Rancher Desktop is an Electron-based Kubernetes/container manager desktop app.
+
+**Platform:** x86_64 only — no arm64 Linux release upstream.
+
+**Binary size:** Electron binary is ~200MB; `elf-arch-multiple-found` is expected.
+
+**Icon:** Upstream icon is 2134×2134 pixels. Pre-resize to exactly 512×512 before
+installing or appstream validation fails:
+```bash
+convert upstream-icon.png -resize 512x512 icon-512.png
+```
+
+**Sandbox:** Electron SUID sandbox is incompatible with Flatpak. Add a wrapper script
+that passes `--no-sandbox` to the Electron binary.
+
+**KVM:** Needs `--device=all` in finish-args for Lima VM backend (KVM access).
+
+**Permanent lint exceptions** (all 7 must be in `exceptions.json`):
+| Exception | Reason |
+|---|---|
+| `appid-filename-mismatch` | manifest.yaml not named after app-id |
+| `elf-arch-multiple-found` | Electron bundles multiple ELF architectures |
+| `finish-args-home-filesystem-access` | Required for Rancher Desktop config/data |
+| `appstream-no-flathub-manifest-key` | Not a Flathub submission |
+| `metainfo-missing-screenshots` | No screenshots in metainfo |
+| `appstream-external-screenshot-url` | If screenshots are added later |
+| `appstream-screenshots-not-mirrored-in-ostree` | Not mirrored to Flathub CDN |

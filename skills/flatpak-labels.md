@@ -1,5 +1,14 @@
 # Flatpak Labels
 
+## When to Use
+- Adding or changing OCI labels or annotations
+- Debugging `flatpak install` failures caused by missing labels
+- Verifying label preservation across chunkah
+
+## When NOT to Use
+- Build pipeline mechanics → `skills/pipeline.md`
+- Index/gh-pages → `skills/gh-pages-index.md`
+
 ## Labels vs Annotations
 
 The Flatpak client reads **Labels** only — not OCI annotations. `org.flatpak.ref` and

@@ -1,5 +1,13 @@
 # gh-pages Index
 
+## When to Use
+- Running or debugging `update-index`, gh-pages worktree, or index shape
+- Diagnosing why an app is missing from the Flatpak remote
+
+## When NOT to Use
+- Build pipeline mechanics → `skills/pipeline.md`
+- App-specific build quirks → `skills/app-gotchas.md`
+
 ## Worktree hygiene
 
 The index lives on the `gh-pages` branch, managed via a git worktree at `/tmp/<repo-name>-pages`.

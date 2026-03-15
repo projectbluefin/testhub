@@ -2,6 +2,14 @@
 
 Adapted from [trailofbits/devcontainer-setup](https://skills.sh/trailofbits/skills/devcontainer-setup).
 
+## When to Use
+- Setting up local build parity with CI
+- Debugging compile-oci or flatpak-builder locally
+
+## When NOT to Use
+- CI pipeline mechanics → `skills/pipeline.md`
+- Understanding why devcontainers/ci migration is blocked → see below and `skills/references/advanced-topics.md`
+
 ## Overview
 
 The devcontainer uses `ghcr.io/flathub-infra/flatpak-github-actions:gnome-49` — the same
@@ -58,9 +66,9 @@ just build <app>
 The goal is to replace the bare `container:` stanza in `compile-oci` with
 `devcontainers/ci@v0.3` so this `devcontainer.json` becomes the single source of truth.
 
-**Blocker:** `flatpak/flatpak-github-actions/flatpak-builder@v6` is a GitHub Action that
-cannot be called from inside `devcontainers/ci`'s `runCmd`. Migration requires replacing
-it with direct `flatpak-builder` commands + manual ccache wiring in a Justfile recipe.
+**Blocker:** `flatpak/flatpak-github-actions/flatpak-builder@v6` is a composite GitHub
+Action that internally uses `actions/cache` — it cannot be called from inside
+`devcontainers/ci`'s `runCmd`. Migration requires replacing it with direct
+`flatpak-builder` commands + manual ccache wiring in a Justfile recipe.
 
-See `skills/pipeline.md` → "devcontainers/ci for compile-oci (future work)" for the
-full migration plan.
+See [`skills/references/advanced-topics.md`](references/advanced-topics.md#devcontainersci-for-compile-oci-future-work) for the full migration plan.

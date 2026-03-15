@@ -2,6 +2,15 @@
 
 Build pipeline. Two paths, one common output.
 
+## When to Use
+- Changing `build.yml`, Justfile, or chunkah flags
+- Debugging lint failures, build errors, or install issues
+
+## When NOT to Use
+- App-specific quirks → `skills/app-gotchas.md`
+- OCI label questions → `skills/flatpak-labels.md`
+- Index / gh-pages changes → `skills/gh-pages-index.md`
+
 ## Two build paths
 
 | File | Path | Example apps |
@@ -138,6 +147,8 @@ flatpak info --user <app-id>   # confirm Alt-id: sha256:... matches pushed diges
 
 Loop is not complete until `flatpak install` succeeds and digest matches.
 
+**Note:** `flatpak remote-ls` may not show a newly published app immediately — wait for "Sync Flatpak Remote Index" to complete (runs after build, takes a few minutes).
+
 ALL flatpak operations (install, inspect, bundle extraction, `find` in
 `~/.local/share/flatpak`) must run inside such a container — never on the host.
 
@@ -228,7 +239,9 @@ OSTree ref shape, appstream catalog in OSTree, screenshot mirroring. Path `repo`
 default `repo-dir` from flatpak/flatpak-github-actions v6. This is the same check Flathub
 runs on all production builds.
 
-Both steps use the same `exceptions.json` file as the manifest lint step.
+**Three distinct stages:** lint fires at manifest (pre-build), builddir (post-build staging), and repo (post-OSTree export). An exception needed at builddir is NOT automatically applied at repo stage — always verify `exceptions.json` covers all three stages before declaring a lint failure fixed.
+
+All three steps use the same `exceptions.json` file.
 
 #### Required exceptions for non-Flathub repos
 
@@ -241,6 +254,7 @@ app's metainfo content:
 | `appstream-screenshots-not-mirrored-in-ostree` | App has screenshots in metainfo but `--mirror-screenshots-url` not passed | If app has screenshots |
 | `appstream-external-screenshot-url` | App has screenshots pointing to external URLs (not dl.flathub.org/media) | If app has screenshots |
 | `metainfo-missing-screenshots` | App has no screenshots in metainfo | If app has no screenshots |
+| `elf-arch-multiple-found` | App bundles multiple ELF architectures (Electron apps do this) | Electron apps |
 
 **Practical rule:** Add `appstream-no-flathub-manifest-key` universally. Then:
 - If the app **has** screenshots in metainfo: add `appstream-external-screenshot-url` + `appstream-screenshots-not-mirrored-in-ostree`
@@ -249,6 +263,10 @@ app's metainfo content:
 Note: `appstream-screenshots-not-mirrored-in-ostree` and `appstream-external-screenshot-url`
 fire at **different** lint stages (builddir vs repo respectively) — both must be in
 `exceptions.json` or the build will fail at one stage even if the other passes.
+
+**`metainfo.xml` appstream validation:** `metainfo.xml` must contain both
+`<launchable type="desktop-id">` and `<developer id="...">` tags or appstream validation
+fails with `appstream-failed-validation`. Missing either triggers the error.
 
 If CI surfaces additional errors after first run, add them to `exceptions.json` and
 document in the app's `GOTCHAS.md`. Do not add metainfo fields we cannot keep accurate
@@ -389,6 +407,8 @@ if [[ -n "${URL}" ]]; then echo "UPSTREAM_URL=${URL}" >> "$GITHUB_ENV"; fi
 
 This applies to any bare `[[` condition, `&&`-chain, or command that may legitimately fail as the final line of a `run:` block.
 
+**`run:` blocks — heredocs:** `<<'EOF'` heredocs inside YAML `run: |` blocks cause YAML parse errors — the terminator at column 0 is interpreted as a YAML key. Use `printf '%s\n' '...' > /tmp/file` instead.
+
 ## `just` recipe Bash patterns
 
 ### Heredoc syntax
@@ -444,22 +464,7 @@ Key upstream docs to check by area:
 
 ## devcontainers/ci for compile-oci (future work)
 
-The `compile-oci` job currently uses a bare `container:` stanza with the gnome-49 image.
-The goal is to switch it to `devcontainers/ci@v0.3` so `.devcontainer/devcontainer.json`
-becomes the single source of truth for the build environment (same container for local dev
-and CI), per https://containers.dev upstream best practice.
-
-**Why not done yet:** `flatpak/flatpak-github-actions/flatpak-builder@v6` is an Actions
-action (handles ccache via actions/cache, runs flatpak-builder). It cannot be called from
-inside `devcontainers/ci`'s `runCmd`. Migration requires replacing it with equivalent
-`flatpak-builder` commands + manual ccache wiring in a Justfile recipe, which is a
-non-trivial restructuring. Deferred to avoid blocking active work.
-
-**Migration path when ready:**
-1. Create `just compile-oci <app> <arch>` recipe consolidating all build logic
-2. Handle ccache via `actions/cache` restore/save steps outside devcontainers/ci
-3. Replace `container:` stanza + inline steps with `devcontainers/ci@v0.3` step calling the recipe
-4. Keep checkout, artifact upload, and issue-filing as bare runner steps
+Deferred — see [`skills/references/advanced-topics.md`](references/advanced-topics.md#devcontainersci-for-compile-oci-future-work).
 
 ## GitHub Actions efficiency — stage your pushes
 
@@ -477,7 +482,7 @@ Simultaneous pushes create concurrent runs that fight for the same runners and w
 
 4. **Do not push from multiple parallel agents simultaneously.** When multiple background agents are each committing and pushing independently, they create separate CI runs per push. Instead, have agents commit locally and coordinate a single push, or accept that they will create separate runs and ensure agents check for conflicts before pushing.
 
-5. **For automated bot workflows** (like `update-mozilla-nightly.yml`): always push to a branch and open a PR rather than trying to push directly to `main`. The merge queue serializes changes and prevents concurrent main-branch build storms.
+5. **For automated bot workflows** (like `update-mozilla-nightly.yml`): always push to a branch and open a PR rather than trying to push directly to `main`. The merge queue serializes changes and prevents concurrent main-branch build storms. **Note:** PRs opened by `GITHUB_TOKEN` do NOT trigger `pull_request` CI events (GitHub security policy) — use a PAT stored as a secret (`NIGHTLY_UPDATE_TOKEN`) for bot PRs that need CI, or manually dispatch the workflow on the PR branch.
 
 6. **Concurrency group awareness.** `build.yml` has a `concurrency` group per app — a new push for the same app cancels an in-progress run. This is intentional for feature branches but undesirable for `main`. Avoid pushing rapidly in succession on main.
 
@@ -492,10 +497,4 @@ gh run list --repo projectbluefin/testhub --workflow=build.yml --limit 5 \
 
 ## Staging tags — do NOT delete
 
-Staging tags (`sha-<sha>-<arch>`) are intentionally permanent. ghcr.io permanently
-deletes manifest blobs when a version/tag is deleted. Since `skopeo copy` within the
-same registry creates only a tag alias (not an independent copy), deleting the staging
-tag version destroys the content manifest that the OCI image index references by digest,
-breaking `flatpak install` with "manifest unknown". Staging tags accumulate and are
-cleaned up manually via `cleanup.yml` when needed. Never add cleanup of staging tags
-to the main build pipeline.
+Permanent — see [`skills/references/advanced-topics.md`](references/advanced-topics.md#staging-tags--do-not-delete).
