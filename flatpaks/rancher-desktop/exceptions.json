@@ -5,6 +5,7 @@
         "metainfo-missing-screenshots",
         "finish-args-home-filesystem-access",
         "finish-args-flatpak-spawn-access",
-        "finish-args-host-os-ro-filesystem-access"
+        "finish-args-host-os-ro-filesystem-access",
+        "elf-arch-multiple-found"
     ]
 }

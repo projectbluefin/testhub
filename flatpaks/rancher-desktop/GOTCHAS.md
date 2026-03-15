@@ -59,3 +59,16 @@ step validates that icons in `hicolor/512x512/` are ≤512×512 and rejects the 
 
 Fix: use `python3` + GdkPixbuf (available in GNOME SDK 49) to resize the icon to 512×512 before
 installing it. Do **not** use `install -Dm644` directly — that copies the oversized file as-is.
+
+## elf-arch-multiple-found lint exception
+The upstream zip bundles native Node modules for both x86_64 and aarch64 (e.g.
+`posix-node/dist/aarch64-linux-gnu.node` alongside `x86_64-linux-gnu.node`).
+flatpak-builder-lint flags this as `elf-arch-multiple-found`. It is intentional and
+structural — the upstream ships a fat zip with multi-arch native modules. Added to
+`exceptions.json`.
+
+## appstream-missing-developer-name / appstream-failed-validation fixes
+The upstream metainfo.xml does not include `<developer>` or `<launchable>` tags.
+Both have been added to `io.rancherdesktop.RancherDesktop.metainfo.xml`:
+- `<developer><name>SUSE LLC</name></developer>`
+- `<launchable type="desktop-id">io.rancherdesktop.RancherDesktop.desktop</launchable>`

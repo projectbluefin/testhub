@@ -20,6 +20,8 @@
   <url type="bugtracker">https://github.com/rancher-sandbox/rancher-desktop/issues</url>
   <metadata_license>MIT</metadata_license>
   <project_license>Apache-2.0</project_license>
+  <developer><name>SUSE LLC</name></developer>
+  <launchable type="desktop-id">io.rancherdesktop.RancherDesktop.desktop</launchable>
   <categories>
     <category>Development</category>
     <category>Utility</category>
