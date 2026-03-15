@@ -65,7 +65,7 @@
       "Name": "projectbluefin/testhub/ghostty",
       "Images": [
         {
-          "Digest": "sha256:8a2aff6eb1a3bc283febf41d7001fbe3bfc474288084b2f691e8a8e6bc2c41f6",
+          "Digest": "sha256:82962f12ed399ffb9c5a64aa5d9badd9a762b366140bcb8a43546d1847786494",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -80,7 +80,7 @@
           }
         },
         {
-          "Digest": "sha256:0a0e6133c22c925b6e855c345e35ace5b099e183ec5d41b26ba00fddbd078835",
+          "Digest": "sha256:9d383cc238f59da3a60850b5bb25d10957a1f1718057ff7a7833e0173b770592",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
