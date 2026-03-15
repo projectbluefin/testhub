@@ -43,10 +43,10 @@ modules:
       - unzip -q rancher-desktop-linux-v1.22.0.zip -d /app/rancher-desktop
 
       # Install 512x512 icon.
-      # Despite the name, logo-square-512.png is actually 2134x2134.
-      # flatpak-builder export rejects icons larger than their slot — resize with GdkPixbuf.
-      - install -d /app/share/icons/hicolor/512x512/apps
-      - python3 -c "import gi; gi.require_version('GdkPixbuf', '2.0'); from gi.repository import GdkPixbuf; p = GdkPixbuf.Pixbuf.new_from_file('/app/rancher-desktop/resources/resources/icons/logo-square-512.png'); p = p.scale_simple(512, 512, GdkPixbuf.InterpType.BILINEAR); p.savev('/app/share/icons/hicolor/512x512/apps/io.rancherdesktop.RancherDesktop.png', 'png', [], [])"
+      # Upstream logo-square-512.png is actually 2134x2134; flatpak-builder export rejects
+      # icons larger than their slot. A pre-resized 512x512 copy is included as a source file.
+      - install -Dm644 io.rancherdesktop.RancherDesktop.512x512.png
+        /app/share/icons/hicolor/512x512/apps/io.rancherdesktop.RancherDesktop.png
 
       # Install and fix desktop file
       - install -Dm644
@@ -74,3 +74,6 @@ modules:
 
       - type: file
         path: io.rancherdesktop.RancherDesktop.metainfo.xml
+
+      - type: file
+        path: io.rancherdesktop.RancherDesktop.512x512.png
