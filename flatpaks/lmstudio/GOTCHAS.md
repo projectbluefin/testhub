@@ -26,8 +26,9 @@ The following `flatpak-builder-lint` checks are suppressed in `exceptions.json`:
 - **`appstream-missing-icon-file`** / **`no-exportable-icon-installed`**: icon is omitted
   intentionally (see "Icon omitted" section above). Suppressed until a working resize tool
   is confirmed inside the gnome-49 sandbox.
-- **`metainfo-missing-screenshots`**: non-Flathub personal remote; no screenshot mirroring
-  infrastructure is required or maintained here.
+- **`metainfo-missing-screenshots`** / **`appstream-screenshots-not-mirrored-in-ostree`**:
+  non-Flathub personal remote; no screenshot mirroring infrastructure is required or
+  maintained here.
 
 ## `--filesystem=home` (intentional)
 

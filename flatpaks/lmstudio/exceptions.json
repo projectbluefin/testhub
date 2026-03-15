@@ -5,6 +5,7 @@
         "finish-args-home-filesystem-access",
         "appstream-missing-icon-file",
         "no-exportable-icon-installed",
-        "metainfo-missing-screenshots"
+        "metainfo-missing-screenshots",
+        "appstream-screenshots-not-mirrored-in-ostree"
     ]
 }
