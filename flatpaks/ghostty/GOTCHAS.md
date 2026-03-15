@@ -17,71 +17,53 @@ a portal-based mechanism. Track the upstream issue tracker for portal support.
 **Symptom:** Ghostty takes ~10 seconds to open its window on the first launch after each
 boot on GNOME Wayland.
 
-**Root cause (two services, both cold on first boot):**
+**Confirmed root cause:** `FlatpakHostCommand` via `org.freedesktop.Flatpak.Development`
+blocks for ~10 seconds on the first call after boot.
 
-1. `org.freedesktop.portal.Desktop` (xdg-desktop-portal) — ghostty calls this on every
-   startup for GlobalShortcuts registration and portal settings queries. If not yet
-   running, the call stalls until the portal activates.
+Ghostty (`-Dflatpak=true`) detects it is running in a flatpak and calls
+`FlatpakHostCommand` to run `/bin/sh -l -c "getent passwd <username>"` on the host
+in order to discover the user's login shell and home directory
+(`src/os/passwd.zig::get()`).  The first `HostCommand` call cold-starts
+flatpak-session-helper's host-execution infrastructure and blocks for ~10 s.
+Subsequent calls in the same session are fast.
 
-2. `org.freedesktop.Flatpak` (flatpak-session-helper) — required for
-   `FlatpakHostCommand`, the mechanism ghostty uses (when built with `-Dflatpak=true`)
-   to spawn shells on the host. If not running, the first shell spawn blocks for ~10 s.
-
-Both services are D-Bus-activated. Cold-start D-Bus activation has a ~10-second timeout
-window. Either service being cold is sufficient to trigger the symptom.
-
-**Fix:** `ghostty-wrapper.sh` is installed as the Flatpak `command`. It makes
-**real method calls** to each service before exec-ing ghostty — not just
-`StartServiceByName`.  The distinction matters:
-
-- `StartServiceByName` returns as soon as the service claims its D-Bus name.
-  xdg-desktop-portal claims its name quickly but then loads backends
-  asynchronously.  If both `xdg-desktop-portal-gnome` and
-  `xdg-desktop-portal-gtk` are installed (common on Fedora/RHEL), backend
-  arbitration can take several more seconds after the name is claimed.
-
-- A real method call blocks until the service is **fully ready** to respond.
-
-Method calls used:
-- `org.freedesktop.portal.Settings.ReadAll ['org.freedesktop.appearance']`
-  — forces xdg-desktop-portal to finish loading all backends; also pre-fetches
-  appearance settings ghostty reads on startup.
-- `org.freedesktop.Flatpak.SessionHelper.RequestSession`
-  — proves flatpak-session-helper is ready for `FlatpakHostCommand` calls.
-
-**Diagnosis (if the delay recurs or changes in character):**
-```bash
-# 1. Check which services are on the session bus before launching
-gdbus call --session --dest org.freedesktop.DBus \
-  --object-path /org/freedesktop/DBus \
-  --method org.freedesktop.DBus.ListNames 2>/dev/null | tr ',' '\n' \
-  | grep -E 'flatpak|portal'
-
-# 2. Time the wrapper's readiness probes directly (run after a reboot, before ghostty)
-time gdbus call --session --timeout 15 \
-  --dest org.freedesktop.portal.Desktop \
-  --object-path /org/freedesktop/portal/desktop \
-  --method org.freedesktop.portal.Settings.ReadAll \
-  "['org.freedesktop.appearance']"
-
-time gdbus call --session --timeout 15 \
-  --dest org.freedesktop.Flatpak \
-  --object-path /org/freedesktop/Flatpak/SessionHelper \
-  --method org.freedesktop.Flatpak.SessionHelper.RequestSession
-
-# 3. Check user journal for portal/helper activation errors
-journalctl --user -xe | grep -E 'portal|flatpak' | tail -30
-
-# 4. Isolate GTK4 shader compilation (if delay survives the wrapper fix)
-GSK_RENDERER=cairo flatpak run --user com.mitchellh.ghostty
-# Fast with cairo → GPU shader compilation is contributing; add --env=GSK_RENDERER=gl to finish-args
+**D-Bus timeline (full unfiltered capture):**
+```
++0.310s  Hello          ghostty registers on session bus
++0.723s  RequestSession flatpak-session-helper (already running — fast)
++0.744s  HostCommand    org.freedesktop.Flatpak.Development  ← BLOCKS
++10.87s  HostCommandExited                                   ← 10.1 s later
++10.99s  HostCommand    (second call — fast)
 ```
 
-**If the delay persists after the wrapper fix:**
-Check `journalctl --user -xe` for portal errors around launch time.  The wrapper
-uses `--timeout 15` and `|| true` so a failing probe is skipped rather than
-hanging indefinitely — but a failing portal suggests a deeper system issue
-(e.g. conflicting portal implementations) that needs to be resolved on the host.
+**Why `RequestSession` does not help:**
+`RequestSession` is on `org.freedesktop.Flatpak.SessionHelper`.
+`HostCommand` is on `org.freedesktop.Flatpak.Development`.
+These are different interfaces; pre-warming SessionHelper does **not** pre-warm Development.
+
+**Investigation status:** delay persists with `--filesystem=home:ro` and `--device=dri`
+matching the upstream ghostty flatpak manifest — permissions are not the cause.
+Root cause is in the `FlatpakHostCommand` first-call cold-start within flatpak-session-helper.
+Consider reporting upstream to ghostty: the `/bin/sh -l -c "getent passwd"` call should
+either be cached after the first successful lookup or made asynchronous.
+
+**Diagnosis commands:**
+```bash
+# Capture full unfiltered D-Bus session bus traffic during ghostty launch
+dbus-monitor --session 2>/dev/null | ts '%.s' > /tmp/dbus-full.log &
+MONITOR_PID=$!
+flatpak run --user com.mitchellh.ghostty &
+sleep 15
+kill $MONITOR_PID
+grep -E 'HostCommand|Flatpak|portal|ghostty' /tmp/dbus-full.log | head -40
+
+# Time the exact command ghostty runs via HostCommand
+time /bin/sh -c "getent passwd $USER"   # fast
+time /bin/sh -l -c "getent passwd $USER"  # may be slow if login shell is slow
+
+# Check user journal for flatpak-session-helper activation
+journalctl --user -xe | grep -E 'flatpak' | tail -20
+```
 
 ## Aggressive cleanup globs
 
@@ -89,10 +71,12 @@ hanging indefinitely — but a failing portal suggests a deeper system issue
 runtime `.so` files are needed. If any future module adds a shared-lib dependency these
 globs will silently strip it. Verify after any new module is added.
 
-## `--device=all`
+## `--device=dri` + `--device=all`
 
-Required for GPU (Vulkan) and PTY device access. Flathub would require narrowing this to
-specific devices. Intentional for now.
+`--device=all` grants GPU (Vulkan), PTY device access, and host PTS namespace access
+(needed for `FlatpakHostCommand` PTY passing). `--device=dri` is explicit for 3D
+rendering. Both match the upstream ghostty flatpak manifest. Flathub would require
+narrowing — intentional for now.
 
 ## exceptions.json — lint suppressions
 
@@ -100,6 +84,6 @@ In addition to the standard non-Flathub exceptions, ghostty suppresses:
 
 | Exception | Reason |
 |---|---|
-| `finish-args-unnecessary-xdg-config-ghostty-ro-access` | Ghostty reads its own config from XDG; linter flags this as unnecessary but it is required |
+| `finish-args-home-ro-filesystem-access` | Matches upstream ghostty flatpak manifest; needed while investigating cold-start delay |
 | `finish-args-flatpak-spawn-access` | Required for sandbox escape (see above) — linter flags it, intentional |
 | `metainfo-missing-screenshots` | Personal hosting repo — no screenshots maintained |

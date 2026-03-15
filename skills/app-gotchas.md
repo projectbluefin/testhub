@@ -5,7 +5,7 @@ Per-app known issues and workarounds. Each app has a dedicated `GOTCHAS.md` in i
 
 | App | File | Key issues |
 |---|---|---|
-| ghostty | `flatpaks/ghostty/GOTCHAS.md` | sandbox escape (`--talk-name=org.freedesktop.Flatpak`), aggressive `*.so`/`*.a` cleanup globs |
+| ghostty | `flatpaks/ghostty/GOTCHAS.md` | sandbox escape (`--talk-name=org.freedesktop.Flatpak`), aggressive `*.so`/`*.a` cleanup globs, 10s cold-start delay (FlatpakHostCommand via Development interface, under investigation) |
 | goose | `flatpaks/goose/GOTCHAS.md` | bundle-repack (no metainfo inject), x86_64 only, missing `<categories>` (Flathub-only violation) |
 | io.github.DenysMb.Kontainer | (inline in `app-gotchas.md`) | `appstream-external-screenshot-url` + `appstream-screenshots-not-mirrored-in-ostree` — screenshots not mirrored to Flathub CDN; permanent exception (both stages) |
 | lmstudio | `flatpaks/lmstudio/GOTCHAS.md` | icon omitted (resize unsolved), `--filesystem=home` intentional, x86_64 only, manual Renovate required |
