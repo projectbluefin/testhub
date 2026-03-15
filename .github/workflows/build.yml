@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload OCI artifact
         if: steps.detect-path.outputs.skip != 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: oci-${{ matrix.app }}-${{ matrix.arch }}
           path: ${{ matrix.app }}.oci/
@@ -373,7 +373,7 @@ jobs:
 
       - name: Download OCI artifact
         if: steps.arch-check.outputs.skip != 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: oci-${{ matrix.app }}-${{ matrix.arch }}
           path: ${{ matrix.app }}.oci
@@ -613,7 +613,7 @@ jobs:
 
       - name: Upload digest artifact
         if: steps.arch-check.outputs.skip != 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: digest-${{ matrix.app }}-${{ matrix.arch }}
           path: /tmp/digest.txt
@@ -621,7 +621,7 @@ jobs:
 
       - name: Upload staging tag artifact
         if: steps.arch-check.outputs.skip != 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: staging-tag-${{ matrix.app }}-${{ matrix.arch }}
           path: /tmp/staging-tag.txt
