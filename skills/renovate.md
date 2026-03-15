@@ -31,6 +31,9 @@ Renovate manages dependency pins in this repo via the self-hosted runner at
   **Handled by:** `.github/workflows/update-mozilla-nightly.yml` runs weekly (Monday 6am UTC)
   to re-download each tarball, recompute sha256, update the manifests, commit to main, and
   trigger rebuilds for any app whose sha256 changed.
+  **Note:** The branch protection merge queue prevents direct pushes from `GITHUB_TOKEN`;
+  the workflow opens a PR on a `chore/nightly-sha256-YYYYMMDD` branch with auto-merge
+  enabled. The merge queue build validates the updated sha256s, then auto-merges to main.
 - `virtualbox` — uses `x-checker-data` (flathub tooling), not regex
 - `org.altlinux.Tuner` / `io.github.DenysMb.Kontainer` — git tags at non-GitHub forges
 
