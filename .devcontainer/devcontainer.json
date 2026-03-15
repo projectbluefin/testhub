@@ -1,5 +1,5 @@
 {
-  "name": "flatpak-oci-remote",
+  "name": "testhub — flatpak OCI remote",
   "image": "ghcr.io/flathub-infra/flatpak-github-actions:gnome-49",
   "runArgs": [
     "--security-opt", "label=disable",
@@ -9,7 +9,16 @@
     "--privileged"
   ],
   "capAdd": ["SYS_ADMIN"],
+  "containerEnv": {
+    "SOURCE_DATE_EPOCH": "0"
+  },
+  "postCreateCommand": "curl -fsSL https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-x86_64-unknown-linux-musl.tar.gz | tar -xz -C /usr/local/bin just && just install-tools-yq",
   "customizations": {
-    "devaipod": { "nestedContainers": true }
+    "vscode": {
+      "extensions": [
+        "redhat.vscode-yaml",
+        "ms-vscode.makefile-tools"
+      ]
+    }
   }
 }
