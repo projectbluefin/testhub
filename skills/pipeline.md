@@ -6,8 +6,8 @@ Build pipeline. Two paths, one common output.
 
 | File | Path | Example apps |
 |---|---|---|
-| `flatpaks/<app>/manifest.yaml` | flatpak-builder | ghostty, firefox-nightly |
-| `flatpaks/<app>/release.yaml` | bundle-repack | goose, lmstudio |
+| `flatpaks/<app>/manifest.yaml` | flatpak-builder | ghostty, firefox-nightly, lmstudio |
+| `flatpaks/<app>/release.yaml` | bundle-repack | goose |
 
 **flatpak-builder path** — builds from source inside gnome-49 container, requires offline
 dependency manifests (no network during build per Flathub policy). Produces an OSTree repo
@@ -216,8 +216,7 @@ a swap causes a silent build failure (download succeeds but verification fails).
 ### builddir and repo lint (post-build, flatpak-builder path only)
 
 `build.yml` runs two additional lint modes after `flatpak-builder` completes, before OCI export.
-These only apply to manifest.yaml apps (ghostty, firefox-nightly). Bundle-repack apps (goose,
-lmstudio) do not produce a flatpak-builder staging directory or OSTree repo, so these modes
+These only apply to manifest.yaml apps (ghostty, firefox-nightly, lmstudio). Bundle-repack apps (goose) do not produce a flatpak-builder staging directory or OSTree repo, so these modes
 cannot run on them.
 
 **`flatpak-builder-lint builddir flatpak_app`** — checks the staging build directory. Key

@@ -26,7 +26,7 @@ that area.
 
 ## Apps
 
-`ghostty` `thunderbird-nightly` `virtualbox` (manifest.yaml), `goose` `lmstudio` `firefox-nightly` (release.yaml or manifest.yaml)
+`ghostty` `thunderbird-nightly` `virtualbox` `lmstudio` `firefox-nightly` (manifest.yaml), `goose` (release.yaml), `io.github.DenysMb.Kontainer` `org.altlinux.Tuner` (manifest.yaml, auto-imported from flatpak-tracker)
 
 ## Test builds
 

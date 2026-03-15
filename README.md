@@ -4,9 +4,9 @@
 An experimental Flatpak remote designed to prototype Flathub's transition to OCI. Someone promised me a magical land of shared storage and composefs, I guess we'll find out. 😄
 
 - Uses [flatpak-tracker](http://github.com/ublue-os/flatpak-tracker) to find flatpaks on Flathub that need runtime updates
-  - Auto imports, updates the runtime, builds, and then publishes a test flatpak
+  - Syncs open runtime-update issues from flatpak-tracker into this repo automatically (daily)
+  - When issues are addressed and manifests updated, CI builds and publishes the updated flatpak
   - Help Flathub reviewers with real testing!
-  - Tracks all Flatpaks published in Aurora, Bazzite, and Bluefin
 - Full flatpak packaging pipeline with full automation using all the latest container tech.
   - [Chunkah](https://github.com/coreos/chunkah) and [zstd:chunked](https://github.com/containers/storage/blob/main/docs/containers-storage-zstd-chunked.md) enabled for partial pulls on the client
 - Serves the remote from GitHub Pages; pushes images to `ghcr.io/projectbluefin/testhub`
@@ -20,7 +20,6 @@ This potentially unlocks all container registries and git forges as Flatpak host
 
 - [Flatpak](https://flatpak.org/) — Application sandboxing and distribution framework
 - [OCI Image Format Specification](https://github.com/opencontainers/image-spec) — Standard for container image formats
-- [bootc](https://containers.github.io/bootc/) — Transactional, in-place operating system updates using OCI images
 - [Podman](https://podman.io/) — Daemonless OCI container engine
 - [Skopeo](https://github.com/containers/skopeo) — Tool for inspecting and copying container images
 - [flatpak-builder](https://docs.flatpak.org/en/latest/flatpak-builder.html) — Builds Flatpak applications from manifests
@@ -45,6 +44,8 @@ flatpak remote-add --user --if-not-exists testhub oci+https://projectbluefin.git
 | Firefox Nightly | Firefox Nightly browser | `flatpak install --user testhub org.mozilla.firefox.nightly` |
 | Thunderbird Nightly | Thunderbird Nightly email client | `flatpak install --user testhub org.mozilla.thunderbird.nightly` |
 | VirtualBox | Oracle VirtualBox | `flatpak install --user testhub org.virtualbox.VirtualBox` |
+| Kontainer | Flatpak container manager (KDE) | `flatpak install --user testhub io.github.DenysMb.Kontainer` |
+| Tuner | Internet radio player (GNOME) | `flatpak install --user testhub org.altlinux.Tuner` |
 
 <details>
 <summary>Copy/paste install commands</summary>
@@ -71,6 +72,14 @@ flatpak install --user testhub org.mozilla.thunderbird.nightly
 
 ```bash
 flatpak install --user testhub org.virtualbox.VirtualBox
+```
+
+```bash
+flatpak install --user testhub io.github.DenysMb.Kontainer
+```
+
+```bash
+flatpak install --user testhub org.altlinux.Tuner
 ```
 
 </details>
