@@ -7,6 +7,7 @@ x-version: "0.4.7"
 # x-arches: upstream only ships x64 installer; no arm64 available
 x-arches: [x86_64]
 x-chunkah-max-layers: "24"
+x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
 command: lm-studio
 finish-args:
   - --device=all  # Required: CUDA/ROCm/Vulkan GPU access for local LLM inference

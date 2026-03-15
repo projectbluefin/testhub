@@ -8,6 +8,7 @@ x-arches:
   - x86_64
 x-chunkah-max-layers: "16"
 x-container-image: "ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08"
+x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
 command: thunderbird
 
 finish-args:

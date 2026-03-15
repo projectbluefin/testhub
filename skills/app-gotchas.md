@@ -178,6 +178,12 @@ Apps that need this flag: any GTK, Qt, Electron, or other GUI app that opens a w
 
 **Known apps with this flag:**
 - `ghostty` — GTK4/Wayland terminal, exits 1 with "Failed to open display" in CI
+- `firefox-nightly` — Firefox GUI browser, no display in headless CI
+- `thunderbird-nightly` — Thunderbird GUI email client, no display in headless CI
+- `lmstudio` — Electron GUI LLM app, exits 1 without Wayland/X11
+- `rancher-desktop` — Electron GUI Kubernetes manager, exits 1 without display
+- `virtualbox` — Qt GUI VM manager, exits 1 without display
+- `io.github.DenysMb.Kontainer` — GUI container manager
 
 ## rancher-desktop
 

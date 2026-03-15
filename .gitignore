@@ -7,6 +7,11 @@
 *.flatpak
 /tmp/
 
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
 # Token/credential files — never commit
 .token
 *.token

@@ -493,6 +493,27 @@ gh run list --repo projectbluefin/testhub --workflow=build.yml --limit 5 \
   --jq '.[] | "\(.status)\t\(.conclusion // "running")\t\(.displayTitle)"'
 ```
 
+## CI Debugging — Stop and Get a Second Opinion
+
+When debugging CI failures, it is easy to fall into autopilot mode — checking run after
+run, following artifact chains across pages of workflow history, without stepping back.
+
+**Rule: if you've checked more than 3–4 CI runs without a clear diagnosis, stop and invoke `/second-opinion`.**
+
+A fresh model perspective breaks the loop. Provide the Gemini reviewer with:
+- A summary of what you know so far (which runs failed, what the errors say)
+- The relevant workflow YAML (e.g. `update-index.yml`)
+- The manifest files for the affected apps
+
+Common CI failure patterns that are easy to miss when deep in the logs:
+
+| Symptom | Root cause | Fix |
+|---|---|---|
+| `e2e-install` fails with "no DISPLAY" or "Failed to open display" | GUI app missing `x-skip-launch-check: true` | Add flag to `manifest.yaml` or `release.yaml` |
+| Sync `prepare` finds 0 digest artifacts | Triggering build was on a non-main branch (Renovate, etc.) or the build itself skipped all apps | Not a bug — the next real `main` push will produce artifacts |
+| Index not updated after a successful build | `e2e-install` failed for one or more apps in the same all-apps run → `commit-index` skipped their entries | Fix the failing e2e tests; the stale index is preserved until the next passing run |
+| Workflow marked `failure` but `commit-index` shows success | Some `e2e-install` matrix jobs failed; `commit-index` runs via `always()` but the overall workflow conclusion is the worst job outcome | Expected behaviour — fix the root e2e failure |
+
 ## Staging tags — do NOT delete
 
 Permanent — see [`skills/references/advanced-topics.md`](references/advanced-topics.md#staging-tags--do-not-delete).
