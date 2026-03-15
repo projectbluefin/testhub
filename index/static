@@ -65,7 +65,7 @@
       "Name": "projectbluefin/testhub/ghostty",
       "Images": [
         {
-          "Digest": "sha256:7c219b772e3dbde63257b5fbf3e6f7eafb12db16de25add81a33f99c18a61f6f",
+          "Digest": "sha256:8a2aff6eb1a3bc283febf41d7001fbe3bfc474288084b2f691e8a8e6bc2c41f6",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -75,12 +75,12 @@
           "Labels": {
             "org.flatpak.ref": "app/com.mitchellh.ghostty/aarch64/stable",
             "org.flatpak.metadata": "[Application]\nname=com.mitchellh.ghostty\nruntime=org.gnome.Platform/aarch64/49\nsdk=org.gnome.Sdk/aarch64/49\ncommand=ghostty-wrapper\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=all;\nfilesystems=xdg-config/ghostty:ro;\n\n[Session Bus Policy]\norg.freedesktop.Flatpak=talk\n\n[Extension com.mitchellh.ghostty.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension com.mitchellh.ghostty.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.mitchellh.ghostty.Locale;com.mitchellh.ghostty.Debug;",
-            "org.flatpak.installed-size": "30594560",
-            "org.flatpak.download-size": "18737292"
+            "org.flatpak.installed-size": "30595072",
+            "org.flatpak.download-size": "18737742"
           }
         },
         {
-          "Digest": "sha256:831e960d4f6b0c0ee4b8897383395b2d44de1e702f15feab1591f33ddaddd7d9",
+          "Digest": "sha256:0a0e6133c22c925b6e855c345e35ace5b099e183ec5d41b26ba00fddbd078835",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -90,8 +90,8 @@
           "Labels": {
             "org.flatpak.ref": "app/com.mitchellh.ghostty/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=com.mitchellh.ghostty\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=ghostty-wrapper\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=all;\nfilesystems=xdg-config/ghostty:ro;\n\n[Session Bus Policy]\norg.freedesktop.Flatpak=talk\n\n[Extension com.mitchellh.ghostty.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension com.mitchellh.ghostty.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.mitchellh.ghostty.Locale;com.mitchellh.ghostty.Debug;",
-            "org.flatpak.installed-size": "32003072",
-            "org.flatpak.download-size": "19199433"
+            "org.flatpak.installed-size": "32003584",
+            "org.flatpak.download-size": "19199535"
           }
         }
       ]
