@@ -5,15 +5,17 @@ sdk: org.gnome.Sdk
 default-branch: stable
 x-chunkah-max-layers: "8"
 x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
-command: ghostty-wrapper
+command: ghostty
 finish-args:
-  - --device=all  # Required: GPU access (Vulkan/Metal) and PTY device access for terminal
+  # 3D rendering
+  - --device=dri
+  # use host PTS namespace
+  - --device=all
   # Windowing
   - --share=ipc
   - --socket=fallback-x11
   - --socket=wayland
-  # Only ghostty's own config dir needed
-  - --filesystem=xdg-config/ghostty:ro
+  - --filesystem=home:ro
   # So we can escape the sandbox
   - --talk-name=org.freedesktop.Flatpak
 cleanup:
@@ -57,12 +59,4 @@ modules:
 
       - type: file
         path: com.mitchellh.ghostty.metainfo.xml
-
-  - name: ghostty-wrapper
-    buildsystem: simple
-    build-commands:
-      - install -Dm755 ghostty-wrapper.sh /app/bin/ghostty-wrapper
-    sources:
-      - type: file
-        path: ghostty-wrapper.sh
 
