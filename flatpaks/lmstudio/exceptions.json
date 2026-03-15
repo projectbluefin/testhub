@@ -2,6 +2,9 @@
     "ai.lmstudio.LMStudio": [
         "appid-filename-mismatch",
         "finish-args-portal-talk-name",
-        "finish-args-home-filesystem-access"
+        "finish-args-home-filesystem-access",
+        "appstream-missing-icon-file",
+        "no-exportable-icon-installed",
+        "metainfo-missing-screenshots"
     ]
 }

@@ -19,6 +19,16 @@ without requiring glycin loaders (e.g. `python3 PIL/Pillow`, `gdk-pixbuf-thumbna
 `magick` from ImageMagick 7). Verify inside a live gnome-49 container before updating the
 manifest.
 
+## Builddir lint exceptions
+
+The following `flatpak-builder-lint` checks are suppressed in `exceptions.json`:
+
+- **`appstream-missing-icon-file`** / **`no-exportable-icon-installed`**: icon is omitted
+  intentionally (see "Icon omitted" section above). Suppressed until a working resize tool
+  is confirmed inside the gnome-49 sandbox.
+- **`metainfo-missing-screenshots`**: non-Flathub personal remote; no screenshot mirroring
+  infrastructure is required or maintained here.
+
 ## `--filesystem=home` (intentional)
 
 LM Studio defaults to `~/.lmstudio` (non-XDG; no XDG support as of v0.4.7) and allows
