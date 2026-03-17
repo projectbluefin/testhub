@@ -63,7 +63,7 @@ modules:
     sources:
       - type: archive
         url: https://download-installer.cdn.mozilla.net/pub/thunderbird/nightly/latest-comm-central/thunderbird-150.0a1.en-US.linux-x86_64.tar.xz
-        sha256: 832db76152af4b54777f014f7230d0dff81294bb6e1eadb7831c514b46a845ca
+        sha256: 5273ad3217ff2e349ffcd8d36a671ab3d994c279a28cdea2e96adf059968ac85
         strip-components: 0
         only-arches:
           - x86_64
