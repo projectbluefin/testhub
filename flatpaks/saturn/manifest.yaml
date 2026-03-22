@@ -1,4 +1,4 @@
-id: io.github.kolunmi.Saturn
+app-id: io.github.kolunmi.Saturn
 runtime: org.gnome.Platform
 runtime-version: "50"
 sdk: org.gnome.Sdk
