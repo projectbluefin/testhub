@@ -574,6 +574,59 @@ Common CI failure patterns that are easy to miss when deep in the logs:
 | Index not updated after a successful build | `e2e-install` failed for one or more apps in the same all-apps run → `commit-index` skipped their entries | Fix the failing e2e tests; the stale index is preserved until the next passing run |
 | Workflow marked `failure` but `commit-index` shows success | Some `e2e-install` matrix jobs failed; `commit-index` runs via `always()` but the overall workflow conclusion is the worst job outcome | Expected behaviour — fix the root e2e failure |
 
+## New app bootstrap — two-build pattern
+
+When adding a **new app** that has never been in the testhub index, the `e2e-install`
+CI step will fail on the first build with:
+```
+Nothing matches app-id 'io.github.foo.Bar' in remote 'testhub'
+```
+
+This is because the app hasn't been indexed in the gh-pages repo yet.
+
+**Fix: use `x-skip-install-test: true` for Build 1, then remove it for Build 2.**
+
+```yaml
+# manifest.yaml — add for first build only, remove after
+x-skip-install-test: true  # Bootstrap: not yet in index; remove after first successful push
+```
+
+Process:
+1. Add `x-skip-install-test: true` to manifest → Build 1 (bootstrap): app is built, signed, pushed, and indexed; install test is skipped.
+2. Remove `x-skip-install-test: true` → Build 2 (real e2e): full install test runs against the now-indexed app.
+
+Never leave `x-skip-install-test: true` in the final merged manifest.
+
+## Three lint stages — distinct exception keys
+
+testhub runs `flatpak-builder-lint` three times in each `compile-oci` job:
+
+| Stage | Command | Scope |
+|---|---|---|
+| manifest | `flatpak-builder-lint manifest flatpaks/<app>/manifest.yaml` | Static analysis of manifest YAML |
+| builddir | `flatpak-builder-lint builddir flatpak_app` | Post-build staging dir |
+| repo | `flatpak-builder-lint repo repo` | Exported OSTree repo |
+
+**Each stage uses distinct exception keys.** Example — no screenshots:
+| Stage | Key |
+|---|---|
+| manifest | `metainfo-missing-screenshots` |
+| builddir | `appstream-missing-screenshots` |
+| repo | `appstream-screenshots-not-mirrored-in-ostree` |
+
+All three must be in `exceptions.json` to pass. Adding only one or two will fail the other
+stages.
+
+## Manifest key convention: always `app-id:`
+
+testhub's `Justfile` `metadata` recipe reads `app-id` explicitly:
+```bash
+VALUE=$(yq e ".x-${KEY} // .${KEY} // \"\"" "$FILE")
+```
+For `key=app-id`, this resolves to `.x-app-id // .app-id`. flatpak-builder accepts both
+`id:` and `app-id:`, but testhub requires `app-id:`. Using `id:` causes the OCI export step
+to fail with "could not determine app-id". Always use `app-id:`.
+
 ## Staging tags — do NOT delete
 
 Permanent — see [`skills/references/advanced-topics.md`](references/advanced-topics.md#staging-tags--do-not-delete).
