@@ -86,7 +86,7 @@ metadata app key:
         DIR="flatpaks/$APP"
     else
         # Search for a dir containing the app-id
-        DIR=$(find flatpaks -maxdepth 2 \( -name "manifest.yaml" -o -name "release.yaml" \) -exec grep -l "app-id: $APP" {} \; | head -1 | xargs dirname 2>/dev/null || echo "")
+        DIR=$(find flatpaks -maxdepth 2 \( -name "manifest.yaml" -o -name "release.yaml" \) -exec grep -lE "(app-id|id): $APP" {} \; | head -1 | xargs dirname 2>/dev/null || echo "")
         if test -z "$DIR"; then
             echo ""
             exit 0
@@ -104,6 +104,10 @@ metadata app key:
 
     # Try x-KEY first, then KEY (handles both manifest.yaml x-prefix and release.yaml no-prefix)
     VALUE=$(yq e ".x-${KEY} // .${KEY} // \"\"" "$FILE" 2>/dev/null | head -1 || echo "")
+    # For 'app-id', also try the canonical 'id' key (newer Flatpak manifests prefer 'id')
+    if [ -z "$VALUE" ] && [ "$KEY" = "app-id" ]; then
+        VALUE=$(yq e '.id // ""' "$FILE" 2>/dev/null | head -1 || echo "")
+    fi
     echo "${VALUE}"
 
 # Check if an arch should be skipped for an app. Prints 'true' to skip, 'false' to build.
@@ -189,14 +193,14 @@ _repack app arch:
     if test -d "flatpaks/${APP}"; then
         RELEASE_DESC="flatpaks/${APP}/release.yaml"
     else
-        RELEASE_DESC=$(find flatpaks -maxdepth 2 -name "release.yaml" -exec grep -l "app-id: ${APP}" {} \; | head -1 || echo "")
+        RELEASE_DESC=$(find flatpaks -maxdepth 2 -name "release.yaml" -exec grep -lE "(app-id|id): ${APP}" {} \; | head -1 || echo "")
     fi
     if [[ ! -f "${RELEASE_DESC:-}" ]]; then
         echo "ERROR: no release.yaml found for ${APP}" >&2
         exit 1
     fi
 
-    APP_ID=$(yq '.app-id' "${RELEASE_DESC}")
+    APP_ID=$(yq '."app-id" // .id' "${RELEASE_DESC}")
     VERSION=$(yq '.version' "${RELEASE_DESC}")
     URL=$(yq '.url' "${RELEASE_DESC}")
     EXPECTED_SHA=$(yq '.sha256' "${RELEASE_DESC}")
@@ -268,14 +272,14 @@ _compile app arch:
     if test -d "flatpaks/${APP}"; then
         MANIFEST="flatpaks/${APP}/manifest.yaml"
     else
-        MANIFEST=$(find flatpaks -maxdepth 2 -name "manifest.yaml" -exec grep -l "app-id: ${APP}" {} \; | head -1 || echo "")
+        MANIFEST=$(find flatpaks -maxdepth 2 -name "manifest.yaml" -exec grep -lE "(app-id|id): ${APP}" {} \; | head -1 || echo "")
     fi
     if [[ ! -f "${MANIFEST:-}" ]]; then
         echo "ERROR: no manifest.yaml found for ${APP}" >&2
         exit 1
     fi
 
-    APP_ID=$(yq '.app-id' "${MANIFEST}")
+    APP_ID=$(yq '."app-id" // .id' "${MANIFEST}")
     [[ -n "${APP_ID}" ]] || { echo "ERROR: could not determine app-id from ${MANIFEST}" >&2; exit 1; }
     BRANCH=$(yq '.default-branch // "stable"' "${MANIFEST}")
     REF="app/${APP_ID}/${ARCH}/${BRANCH}"
@@ -788,15 +792,15 @@ run-test app arch:
 
     # Resolve app-id
     if [[ -f "flatpaks/${APP}/release.yaml" ]]; then
-        APP_ID=$(yq '.app-id' "flatpaks/${APP}/release.yaml")
+        APP_ID=$(yq '."app-id" // .id' "flatpaks/${APP}/release.yaml")
         MANIFEST="flatpaks/${APP}/release.yaml"
     elif [[ -f "flatpaks/${APP}/manifest.yaml" ]]; then
-        APP_ID=$(yq '.app-id' "flatpaks/${APP}/manifest.yaml")
+        APP_ID=$(yq '."app-id" // .id' "flatpaks/${APP}/manifest.yaml")
         MANIFEST="flatpaks/${APP}/manifest.yaml"
     else
         # Search by app-id
         MANIFEST=$(find flatpaks -maxdepth 2 \( -name "manifest.yaml" -o -name "release.yaml" \) \
-            -exec grep -l "app-id: ${APP}" {} \; | head -1 || echo "")
+            -exec grep -lE "(app-id|id): ${APP}" {} \; | head -1 || echo "")
         if [[ -z "${MANIFEST}" ]]; then
             echo "ERROR: no manifest found for ${APP}" >&2; exit 1
         fi
