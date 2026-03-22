@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.kolunmi.Saturn</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Saturn</name>
+  <summary>Browse and manage Flatpak apps</summary>
+
+  <description>
+    <p>
+      Saturn is a Flatpak application launcher and manager for GNOME. It lets you
+      browse installed Flatpak applications, view application details, and launch
+      apps from a single interface.
+    </p>
+    <p>
+      Built with GTK4 and libadwaita, Saturn follows GNOME design conventions and
+      integrates with the Flatpak system to provide a unified view of your installed
+      applications across both system and user installations.
+    </p>
+  </description>
+
+  <developer id="io.github.kolunmi">
+    <name>Eva M</name>
+  </developer>
+
+  <url type="homepage">https://github.com/kolunmi/Saturn</url>
+  <url type="vcs-browser">https://github.com/kolunmi/Saturn</url>
+  <url type="bugtracker">https://github.com/kolunmi/Saturn/issues</url>
+
+  <translation type="gettext">saturn</translation>
+  <launchable type="desktop-id">io.github.kolunmi.Saturn.desktop</launchable>
+
+  <content_rating type="oars-1.1"/>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#6a50ac</color>
+    <color type="primary" scheme_preference="dark">#3d2b6e</color>
+  </branding>
+
+  <releases>
+    <release version="0.1.0" date="2026-03-22">
+      <description translate="no">
+        <p>Initial testhub packaging of Saturn.</p>
+      </description>
+    </release>
+  </releases>
+
+</component>

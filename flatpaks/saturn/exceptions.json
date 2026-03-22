@@ -1,0 +1,9 @@
+{
+    "io.github.kolunmi.Saturn": [
+        "appid-filename-mismatch",
+        "appstream-no-flathub-manifest-key",
+        "metainfo-missing-screenshots",
+        "finish-args-home-filesystem-access",
+        "finish-args-flatpak-spawn-access"
+    ]
+}

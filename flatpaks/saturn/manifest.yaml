@@ -1,0 +1,120 @@
+app-id: io.github.kolunmi.Saturn
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+default-branch: stable
+x-version: "0.1.0"
+x-skip-install-test: true  # Bootstrap: app not yet in index; remove after first successful index commit
+command: saturn
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=/var/lib/flatpak  # Flatpak manager: access system-wide installs
+  - --filesystem=home              # Flatpak manager: access user installs
+  - --talk-name=org.freedesktop.Flatpak
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /man
+  - /share/doc
+  - /share/gtk-doc
+  - /share/man
+  - /share/pkgconfig
+  - "*.la"
+  - "*.a"
+modules:
+  - name: ecl
+    buildsystem: autotools
+    build-options:
+      cflags: "-std=c99 -O2 -fasm"
+    sources:
+      - type: git
+        url: https://gitlab.com/embeddable-common-lisp/ecl.git
+        commit: e4269ea51fffd742f92cb19a89f52af3cdf0d9f8
+        tag: "24.5.10"
+
+  - name: saturn-cl-deps
+    buildsystem: simple
+    build-commands:
+      - ecl --load build-cl-deps.lsp
+      - cp *.a /app/lib/ecl-24.5.10/
+    sources:
+      - type: file
+        path: build-cl-deps.lsp
+      - type: file
+        path: saturn-cl-deps.asd
+      - type: git
+        url: https://github.com/sionescu/bordeaux-threads.git
+        commit: 076fe2380abbc59b06e495dc7a35aea8eb26ba3b
+        tag: v0.8.8
+        dest: bordeaux-threads
+      - type: git
+        url: https://github.com/sharplispers/split-sequence.git
+        commit: 89a10b4d697f03eb32ade3c373c4fd69800a841a
+        dest: split-sequence
+      - type: git
+        url: https://github.com/pcostanza/closer-mop.git
+        commit: c6b1f2db0d77aea961e871f268b6fdcdc90c7510
+        dest: closer-mop
+      - type: git
+        url: https://github.com/trivial-garbage/trivial-garbage.git
+        commit: 3474f6414b73d4e3aa2d5c53080f4247a34f6380
+        dest: trivial-garbage
+      - type: git
+        url: https://github.com/lmj/global-vars.git
+        commit: c749f32c9b606a1457daa47d59630708ac0c266e
+        dest: global-vars
+      - type: git
+        url: https://gitlab.common-lisp.net/iterate/iterate.git
+        commit: d27d7ff4821b9d8b011afaaa866d7993942430f4
+        dest: iterate
+      - type: git
+        url: https://github.com/cl-babel/babel.git
+        commit: 4eaf3f228be4f6860ccc0b0fbb4c1781a1ee6597
+        dest: babel
+      - type: git
+        url: https://gitlab.common-lisp.net/alexandria/alexandria.git
+        commit: 390a096b4e1f9f85878ac313908c1c2ab2223ab6
+        dest: alexandria
+      - type: git
+        url: https://github.com/trivial-features/trivial-features.git
+        commit: 18a5cfafa5ca2565f4297d1d986409facff68f00
+        dest: trivial-features
+      - type: git
+        url: https://github.com/cffi/cffi.git
+        commit: 71fdf5d4864dd07a74534c953350041ceaa93f0e
+        dest: cffi
+      - type: git
+        url: https://github.com/kolunmi/cl-cffi-glib.git
+        commit: c781aa21650f388a4617972252902d0da1969d98
+        dest: cl-cffi-glib
+      - type: git
+        url: https://github.com/kolunmi/cl-cffi-gtk4.git
+        commit: fabe1c82341b227ffbb6c4d9ec681aaa337bcc06
+        dest: cl-cffi-gtk4
+      - type: git
+        url: https://github.com/kolunmi/cl-cffi-cairo.git
+        commit: b0d52cbd0d956f1ca1d154c872f6ff5696e3f7a6
+        dest: cl-cffi-cairo
+      - type: git
+        url: https://github.com/kolunmi/cl-cffi-pango.git
+        commit: 3996c3865367609b870d271945a32262f04bf846
+        dest: cl-cffi-pango
+      - type: git
+        url: https://github.com/kolunmi/cl-cffi-graphene.git
+        commit: bedeb6c5f8b82b524079729907d55fcf201b91c9
+        dest: cl-cffi-graphene
+      - type: git
+        url: https://github.com/kolunmi/cl-cffi-gdk-pixbuf.git
+        commit: b8bf37fb111c434e1adaa242044c03408940ea37
+        dest: cl-cffi-gdk-pixbuf
+
+  - name: saturn
+    buildsystem: meson
+    sources:
+      - type: git
+        url: https://github.com/kolunmi/Saturn.git
+        commit: ffcfc43e775bf05807bbb4f1f0c6d26ce36aecb8
