@@ -1,5 +1,5 @@
 [Flatpak Repo]
 Title=testhub
-Description=Personal OCI Flatpak repository for projectbluefin/testhub
-Url=oci+https://projectbluefin.github.io/testhub
-Homepage=https://github.com/projectbluefin/testhub
+Description=Personal OCI Flatpak repository for castrojo/testhub
+Url=oci+https://castrojo.github.io/testhub
+Homepage=https://github.com/castrojo/testhub
