@@ -4,6 +4,7 @@ runtime-version: "50"
 sdk: org.gnome.Sdk
 default-branch: stable
 x-version: "0.1.0"
+x-skip-launch-check: true  # GTK4 GUI: exits 1 with "Failed to open display" in headless CI
 command: saturn
 finish-args:
   - --share=network
