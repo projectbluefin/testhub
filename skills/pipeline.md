@@ -617,15 +617,17 @@ testhub runs `flatpak-builder-lint` three times in each `compile-oci` job:
 All three must be in `exceptions.json` to pass. Adding only one or two will fail the other
 stages.
 
-## Manifest key convention: always `app-id:`
+## Manifest key convention: `app-id:` preferred, `id:` also supported
 
-testhub's `Justfile` `metadata` recipe reads `app-id` explicitly:
+testhub's `Justfile` `metadata` recipe reads `app-id` with a fallback to `id`:
 ```bash
 VALUE=$(yq e ".x-${KEY} // .${KEY} // \"\"" "$FILE")
+# For key=app-id: resolves .x-app-id // .app-id, then falls back to .id
 ```
-For `key=app-id`, this resolves to `.x-app-id // .app-id`. flatpak-builder accepts both
-`id:` and `app-id:`, but testhub requires `app-id:`. Using `id:` causes the OCI export step
-to fail with "could not determine app-id". Always use `app-id:`.
+flatpak-builder accepts both `id:` and `app-id:`. The Justfile `metadata` helper
+now supports both, so either key works for OCI export. The export step only fails
+with "could not determine app-id" if **neither** key is present. Prefer `app-id:`
+for consistency with existing testhub manifests, but `id:` is not broken.
 
 ## Staging tags — do NOT delete
 

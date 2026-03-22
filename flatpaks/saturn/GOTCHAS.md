@@ -18,18 +18,15 @@ module source and the 15 CL deps) must be bumped manually.
 
 Renovate cannot auto-track commit-only sources without a release tag.
 
-## app-id key: use `app-id:` not `id:`
+## `app-id` vs `id` key
 
-flatpak-builder accepts both `id:` and `app-id:` in YAML manifests, but testhub's
-Justfile `metadata` recipe reads `app-id` explicitly via `yq e ".app-id // \"\""`.
-Using `id:` causes the OCI export step to fail with:
+flatpak-builder accepts both `id:` and `app-id:` in YAML manifests. testhub's
+Justfile `metadata` recipe reads `.app-id` and, if empty, falls back to `.id`,
+so either key works for OCI export.
 
-```
-ERROR: could not determine app-id
-```
-
-All testhub manifests must use `app-id:`. This is already correct in Saturn's manifest
-but document it here to prevent future regression.
+Saturn's manifest uses `app-id:` for consistency with other testhub apps, but
+`id:` is also supported. The OCI export step only fails with "could not determine
+app-id" if **neither** key is present.
 
 ## Three lint stages — three screenshot exception keys
 

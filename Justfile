@@ -86,7 +86,7 @@ metadata app key:
         DIR="flatpaks/$APP"
     else
         # Search for a dir containing the app-id
-        DIR=$(find flatpaks -maxdepth 2 \( -name "manifest.yaml" -o -name "release.yaml" \) -exec grep -lE "(app-id|id): $APP" {} \; | head -1 | xargs dirname 2>/dev/null || echo "")
+        DIR=$(find flatpaks -maxdepth 2 \( -name "manifest.yaml" -o -name "release.yaml" \) -exec grep -lF -e "app-id: $APP" -e "id: $APP" {} \; | head -1 | xargs dirname 2>/dev/null || echo "")
         if test -z "$DIR"; then
             echo ""
             exit 0
@@ -193,7 +193,7 @@ _repack app arch:
     if test -d "flatpaks/${APP}"; then
         RELEASE_DESC="flatpaks/${APP}/release.yaml"
     else
-        RELEASE_DESC=$(find flatpaks -maxdepth 2 -name "release.yaml" -exec grep -lE "(app-id|id): ${APP}" {} \; | head -1 || echo "")
+        RELEASE_DESC=$(find flatpaks -maxdepth 2 -name "release.yaml" -exec grep -lF -e "app-id: ${APP}" -e "id: ${APP}" {} \; | head -1 || echo "")
     fi
     if [[ ! -f "${RELEASE_DESC:-}" ]]; then
         echo "ERROR: no release.yaml found for ${APP}" >&2
@@ -272,7 +272,7 @@ _compile app arch:
     if test -d "flatpaks/${APP}"; then
         MANIFEST="flatpaks/${APP}/manifest.yaml"
     else
-        MANIFEST=$(find flatpaks -maxdepth 2 -name "manifest.yaml" -exec grep -lE "(app-id|id): ${APP}" {} \; | head -1 || echo "")
+        MANIFEST=$(find flatpaks -maxdepth 2 -name "manifest.yaml" -exec grep -lF -e "app-id: ${APP}" -e "id: ${APP}" {} \; | head -1 || echo "")
     fi
     if [[ ! -f "${MANIFEST:-}" ]]; then
         echo "ERROR: no manifest.yaml found for ${APP}" >&2
@@ -800,7 +800,7 @@ run-test app arch:
     else
         # Search by app-id
         MANIFEST=$(find flatpaks -maxdepth 2 \( -name "manifest.yaml" -o -name "release.yaml" \) \
-            -exec grep -lE "(app-id|id): ${APP}" {} \; | head -1 || echo "")
+            -exec grep -lF -e "app-id: ${APP}" -e "id: ${APP}" {} \; | head -1 || echo "")
         if [[ -z "${MANIFEST}" ]]; then
             echo "ERROR: no manifest found for ${APP}" >&2; exit 1
         fi
