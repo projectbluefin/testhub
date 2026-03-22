@@ -62,8 +62,8 @@ modules:
       - mkdir -p ${FLATPAK_DEST}/share/runtime/langpack
     sources:
       - type: archive
-        url: https://download-installer.cdn.mozilla.net/pub/thunderbird/nightly/latest-comm-central/thunderbird-150.0a1.en-US.linux-x86_64.tar.xz
-        sha256: 5273ad3217ff2e349ffcd8d36a671ab3d994c279a28cdea2e96adf059968ac85
+        url: https://ftp.mozilla.org/pub/thunderbird/nightly/latest-comm-central/thunderbird-150.0a1.en-US.linux-x86_64.tar.xz
+        sha256: b1a78a10ca36b104cd5f39a4b71deea2a8ebc53fe3ce9d759d552636252d587d
         strip-components: 0
         only-arches:
           - x86_64

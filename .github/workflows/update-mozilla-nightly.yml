@@ -5,9 +5,12 @@ on:
     - cron: '0 */12 * * *'  # Every 12 hours
   workflow_dispatch:
 
+# contents:write to push directly to main.
+# actions:write to trigger build.yml via workflow_dispatch after pushing.
+# GITHUB_TOKEN pushes do not trigger on:push — we must dispatch build.yml explicitly.
 permissions:
   contents: write
-  pull-requests: write
+  actions: write
 
 jobs:
   update-sha256s:
@@ -30,9 +33,8 @@ jobs:
 
           FF_X86_URL="https://ftp.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox-150.0a1.en-US.linux-x86_64.tar.xz"
           FF_ARM_URL="https://ftp.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox-150.0a1.en-US.linux-aarch64.tar.xz"
-          TB_X86_URL="https://download-installer.cdn.mozilla.net/pub/thunderbird/nightly/latest-comm-central/thunderbird-150.0a1.en-US.linux-x86_64.tar.xz"
-
-          CHANGED=false
+          # Use ftp.mozilla.org (not CDN) — CDN caused HTTP/2 stream errors (exit code 92).
+          TB_X86_URL="https://ftp.mozilla.org/pub/thunderbird/nightly/latest-comm-central/thunderbird-150.0a1.en-US.linux-x86_64.tar.xz"
 
           check_and_download() {
             local name="$1" url="$2" etag_file="/tmp/nightly-etags/${1}.etag"
@@ -44,7 +46,7 @@ jobs:
               echo "changed_${name}=false" >> "$GITHUB_OUTPUT"
             else
               echo "$name: ETag changed ($old_etag -> $new_etag), downloading..."
-              curl -sL --output "/tmp/${name}.tar.xz" "$url"
+              curl -sL --retry 3 --retry-delay 5 --output "/tmp/${name}.tar.xz" "$url"
               echo "$new_etag" > "$etag_file"
               echo "changed_${name}=true" >> "$GITHUB_OUTPUT"
             fi
@@ -79,11 +81,9 @@ jobs:
           path: /tmp/nightly-etags
           key: mozilla-nightly-etags-${{ github.run_id }}
 
-      - name: Open PR if sha256s changed
+      - name: Commit and push sha256 updates to main
         env:
-          # NOTE: PRs opened with GITHUB_TOKEN do not trigger pull_request CI.
-          # Add a PAT as NIGHTLY_UPDATE_TOKEN to make builds trigger automatically.
-          GH_TOKEN: ${{ secrets.NIGHTLY_UPDATE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -93,16 +93,11 @@ jobs:
             exit 0
           fi
 
-          BRANCH="chore/nightly-sha256-$(date -u +%Y%m%d-%H%M)"
-          git checkout -b "$BRANCH"
           git add flatpaks/firefox-nightly/manifest.yaml flatpaks/thunderbird-nightly/manifest.yaml
-          printf 'chore(nightly): update Mozilla nightly sha256s\n\nAuto-refresh sha256 for firefox-nightly and thunderbird-nightly.\nMozilla rebuilds nightly at the same URL; ETag changed so new build\nis available. Renovate cannot track this.\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>\n' > /tmp/commit-msg.txt
+          printf 'chore(nightly): update Mozilla nightly sha256s\n\nAuto-refresh sha256 for firefox-nightly and/or thunderbird-nightly.\nMozilla rebuilds nightly at the same URL; ETag changed so new build\nis available. Renovate cannot track this.\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>\n' > /tmp/commit-msg.txt
           git commit -F /tmp/commit-msg.txt
-          git push origin "$BRANCH"
+          git push origin main
 
-          gh pr create \
-            --title "chore(nightly): update Mozilla nightly sha256s $(date -u +%Y-%m-%d)" \
-            --body "ETag-triggered sha256 refresh for firefox-nightly and/or thunderbird-nightly." \
-            --base main \
-            --head "$BRANCH" || true
-          gh pr merge "$BRANCH" --auto --squash || true
+          # GITHUB_TOKEN pushes do not trigger on:push in other workflows.
+          # Explicitly dispatch build.yml so the updated sha256s are built immediately.
+          gh workflow run build.yml --ref main
