@@ -46,7 +46,10 @@ jobs:
               echo "changed_${name}=false" >> "$GITHUB_OUTPUT"
             else
               echo "$name: ETag changed ($old_etag -> $new_etag), downloading..."
-              curl -sL --retry 3 --retry-delay 5 --output "/tmp/${name}.tar.xz" "$url"
+              if ! curl -fsSL --retry 3 --retry-delay 5 --output "/tmp/${name}.tar.xz" "$url"; then
+                echo "$name: Download failed (non-2xx response), aborting." >&2
+                exit 1
+              fi
               echo "$new_etag" > "$etag_file"
               echo "changed_${name}=true" >> "$GITHUB_OUTPUT"
             fi

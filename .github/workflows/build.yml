@@ -1,6 +1,6 @@
 # CI environment reference
 # ─────────────────────────────────────────────────────────────────────────────
-# compile-oci and e2e-install run INSIDE gnome-50 container:
+# compile-oci runs INSIDE gnome-50 container:
 #   ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
 #   Has: flatpak-builder, yq (after install-tools-yq), python3, ostree,
 #        buildah, flatpak-builder-lint, flatpak, skopeo, just (after install)
