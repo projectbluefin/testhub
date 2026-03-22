@@ -4,7 +4,6 @@ runtime-version: "50"
 sdk: org.gnome.Sdk
 default-branch: stable
 x-version: "0.1.0"
-x-skip-install-test: true  # Bootstrap: app not yet in index; remove after first successful index commit
 command: saturn
 finish-args:
   - --share=network
