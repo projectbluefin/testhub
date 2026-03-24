@@ -1,0 +1,39 @@
+app-id: org.wmakerdock.Config
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+default-branch: stable
+x-version: "0.1.15"
+x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
+x-skip-install-test: true  # Build 1 bootstrap: not yet in testhub index; remove after first successful CI push
+x-skip-chunkah: true
+command: wmakerdock-config
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --talk-name=ca.desrt.dconf
+  - --filesystem=xdg-run/dconf
+  - --filesystem=xdg-config/dconf
+
+modules:
+  - name: wmdock-config
+    buildsystem: simple
+    build-commands:
+      - |
+        cc config-app/wmakerdock-config.c -o wmakerdock-config \
+          $(pkg-config --cflags --libs gtk4 libadwaita-1 gio-unix-2.0) -ldl
+      - install -Dm755 wmakerdock-config /app/bin/wmakerdock-config
+      - install -Dm644 org.wmakerdock.Config.desktop /app/share/applications/org.wmakerdock.Config.desktop
+      - install -Dm644 config-app/data/org.wmakerdock.Config.svg /app/share/icons/hicolor/scalable/apps/org.wmakerdock.Config.svg
+      - install -Dm644 config-app/data/org.wmakerdock.Settings.gschema.xml /app/share/glib-2.0/schemas/org.wmakerdock.Settings.gschema.xml
+      - install -Dm644 org.wmakerdock.Config.metainfo.xml /app/share/metainfo/org.wmakerdock.Config.metainfo.xml
+      - glib-compile-schemas /app/share/glib-2.0/schemas
+    sources:
+      - type: archive
+        url: https://gitlab.com/cschalle/wmdock/-/archive/v0.1.15/wmdock-v0.1.15.tar.gz
+        sha256: 6004e3ca95407b4e1066f3aac95f39f5db5f3e10259afa20470676ba79443354
+      - type: file
+        path: org.wmakerdock.Config.desktop
+      - type: file
+        path: org.wmakerdock.Config.metainfo.xml

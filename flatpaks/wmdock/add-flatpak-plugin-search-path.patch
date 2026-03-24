@@ -1,0 +1,12 @@
+--- a/config-app/wmakerdock-config.c
++++ b/config-app/wmakerdock-config.c
+@@ -190,6 +190,9 @@
+ const char *search_dirs[8];
+ int n = 0;
+ search_dirs[n++] = "/usr/lib64/wmakerdock";
++/* Flatpak plugin path (for packaged plugin sets or future extension runtimes).
++ * The standalone config app remains usable even when no plugins are present. */
++search_dirs[n++] = "/app/lib/wmakerdock";
+ search_dirs[n++] = "/usr/lib/wmakerdock";
+ if (exe_dir)
+ search_dirs[n++] = exe_dir;

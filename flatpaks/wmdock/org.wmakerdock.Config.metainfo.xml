@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.wmakerdock.Config</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>WMaker Dock Config</name>
+  <summary>Configure Window Maker dock apps for GNOME Wayland</summary>
+  <description>
+    <p>
+      WMaker Dock Config is the standalone configuration utility for WMaker Dock.
+      It lets you enable and tune dock app settings for the host-side extension.
+    </p>
+    <p>
+      Scope note: this Flatpak packages only the standalone config application.
+      The GNOME Shell extension runtime remains host-side and is out of Flatpak scope.
+    </p>
+  </description>
+  <url type="homepage">https://gitlab.com/cschalle/wmdock</url>
+  <developer id="org.wmakerdock">
+    <name>WMaker Dock Contributors</name>
+  </developer>
+  <launchable type="desktop-id">org.wmakerdock.Config.desktop</launchable>
+  <categories>
+    <category>Settings</category>
+    <category>Utility</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.15" date="2026-03-23"/>
+  </releases>
+</component>

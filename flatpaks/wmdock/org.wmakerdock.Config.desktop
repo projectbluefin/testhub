@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=WMaker Dock Config
+Comment=Configure Window Maker dock apps for Wayland
+Exec=wmakerdock-config
+Icon=org.wmakerdock.Config
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=dock;dockapp;windowmaker;wayland;
+StartupNotify=true
