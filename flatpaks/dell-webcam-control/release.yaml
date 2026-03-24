@@ -1,0 +1,12 @@
+app-id: io.gitlab.cschalle.DellWebcamControl
+version: 509e54c2
+# arches: upstream generic package provides a single bundle; no aarch64 bundle proven
+arches: [x86_64]
+url: https://gitlab.com/api/v4/projects/74702014/packages/generic/dell-wb7022-control/509e54c2/io.gitlab.cschalle.DellWebcamControl.flatpak
+sha256: c41857c2e30069dc6b2ac7d4c7617563be7f1a4c0ae19384b4e98d7e989252a4
+title: Dell Webcam Control
+description: Control application for Dell UltraSharp WB7022 4K webcam
+license: GPL-3.0-or-later
+x-skip-launch-check: true
+x-skip-install-test: true
+x-skip-chunkah: true
