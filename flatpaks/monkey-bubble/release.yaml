@@ -1,0 +1,11 @@
+app-id: io.gitlab.cschalle.monkey-bubble
+version: 0.5.33
+# arches: upstream generic package provides a single bundle; no aarch64 bundle proven
+arches: [x86_64]
+url: https://gitlab.com/api/v4/projects/80424238/packages/generic/monkey-bubble/0.5.33/monkey-bubble.flatpak
+sha256: 0bf0260e75ccd0dd281e215a5fa80b84b42690454402ff2cb90e64e2aad01b87
+title: Monkey Bubble
+description: Classic bubble-shooter arcade game
+license: GPL-2.0-or-later
+x-skip-launch-check: true
+x-skip-install-test: true
