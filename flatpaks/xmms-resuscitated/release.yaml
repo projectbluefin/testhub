@@ -1,0 +1,14 @@
+app-id: org.xmms.Resuscitated
+version: build-13
+# Strategy (#22): release.yaml single-arch x86_64 using current GitLab CI artifact.
+# Volatility note: job-artifact URLs may expire or disappear; this pin is deterministic now
+# (exact URL + sha256) but may require periodic refresh when upstream prunes artifacts.
+arches: [x86_64]
+url: https://gitlab.com/cschalle/xmms-resuscitated/-/jobs/artifacts/build-13/raw/xmms-resuscitated-x86_64.flatpak?job=flatpak-x86_64
+sha256: c95698250179d57caf0c0f9bf560aceb618385ce6f2c636b90e6bf7f3af98bc2
+title: XMMS Resuscitated
+description: XMMS Resuscitated media player - Flatpak repack
+license: GPL-2.0-or-later
+x-skip-launch-check: true
+x-skip-install-test: true
+x-skip-chunkah: true
