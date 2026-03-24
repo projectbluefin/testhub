@@ -1,0 +1,10 @@
+app-id: com.redhat.RedHatPlanet
+version: 96a56f22
+arches: [x86_64]
+url: https://gitlab.com/api/v4/projects/74314426/packages/generic/redhatplanet/96a56f22/com.redhat.RedHatPlanet.flatpak
+sha256: e7ab6978b95fadbbc4e36058e8519e7ffc60455bd877ce81e5f98c0c13129985
+title: Red Hat Planet
+description: Interactive 3D globe showing Red Hat offices with live news feed
+license: BSD-3-Clause
+x-skip-launch-check: true
+x-skip-install-test: true
