@@ -1,0 +1,12 @@
+{
+    "org.linuxrising.ElgatoLight": [
+        "appid-filename-mismatch",
+        "appstream-no-flathub-manifest-key",
+        "metainfo-missing-screenshots",
+        "appstream-missing-screenshots",
+        "appstream-screenshots-not-mirrored-in-ostree",
+        "finish-args-dconf-talk-name",
+        "finish-args-unnecessary-xdg-config-dconf-rw-access",
+        "finish-args-direct-dconf-path"
+    ]
+}

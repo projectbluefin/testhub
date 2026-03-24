@@ -1,0 +1,48 @@
+# Chosen standalone Flatpak app-id for the GJS preferences/scanner package.
+app-id: org.linuxrising.ElgatoLight
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+default-branch: stable
+x-version: "1.0.0"
+x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
+x-skip-install-test: true  # Build 1 bootstrap: not yet in testhub index; remove after first successful CI push
+x-skip-chunkah: true
+command: elgato-light-preferences
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --system-talk-name=org.freedesktop.Avahi
+  - --talk-name=ca.desrt.dconf
+  - --filesystem=xdg-run/dconf
+  - --filesystem=xdg-config/dconf
+
+modules:
+  - name: elgato-light
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/elgato-light
+      - cp -r . /app/share/elgato-light
+      - install -Dm755 elgato-light-preferences.sh /app/bin/elgato-light-preferences
+      - install -Dm755 elgato-light-device-scanner.sh /app/bin/elgato-light-device-scanner
+      - install -Dm644 org.linuxrising.ElgatoLight.desktop /app/share/applications/org.linuxrising.ElgatoLight.desktop
+      - install -Dm644 org.linuxrising.ElgatoLight.metainfo.xml /app/share/metainfo/org.linuxrising.ElgatoLight.metainfo.xml
+      - install -Dm644 org.linuxrising.ElgatoLight.svg /app/share/icons/hicolor/scalable/apps/org.linuxrising.ElgatoLight.svg
+      - install -Dm644 schemas/org.gnome.shell.extensions.elgato-light-control.gschema.xml /app/share/glib-2.0/schemas/org.gnome.shell.extensions.elgato-light-control.gschema.xml
+      - glib-compile-schemas /app/share/glib-2.0/schemas
+    sources:
+      - type: archive
+        url: https://gitlab.com/cschalle/gnome-shell-elgato-light-controller/-/archive/0f04e199c6b39f035dac9ee4e63c749bab4290be/gnome-shell-elgato-light-controller-0f04e199c6b39f035dac9ee4e63c749bab4290be.tar.gz
+        sha256: 2f96e11ab40f0006d2ee29b20e0cdaae36971ec9b047e62b2a14d7afb2284b1b
+      - type: file
+        path: elgato-light-preferences.sh
+      - type: file
+        path: elgato-light-device-scanner.sh
+      - type: file
+        path: org.linuxrising.ElgatoLight.desktop
+      - type: file
+        path: org.linuxrising.ElgatoLight.metainfo.xml
+      - type: file
+        path: org.linuxrising.ElgatoLight.svg

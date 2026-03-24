@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Elgato Light Preferences
+Comment=Manage Elgato light devices on your local network
+Exec=elgato-light-preferences
+Icon=org.linuxrising.ElgatoLight
+Terminal=false
+Categories=Settings;Utility;
+Keywords=elgato;light;lighting;device;
+StartupNotify=true

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.linuxrising.ElgatoLight</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-or-later</project_license>
+  <name>Elgato Light Preferences</name>
+  <summary>Manage Elgato light devices discovered on the local network</summary>
+  <description>
+    <p>
+      Elgato Light Preferences is a standalone GTK/libadwaita application for
+      discovering and configuring Elgato light devices.
+    </p>
+    <p>
+      It includes a preferences interface and a device-scanner helper command
+      intended for local-network setup and control workflows.
+    </p>
+    <p>
+      Scope note: this Flatpak ships standalone app tooling only. The GNOME
+      Shell extension runtime remains host-side and is out of Flatpak scope.
+    </p>
+  </description>
+  <url type="homepage">https://gitlab.com/cschalle/gnome-shell-elgato-light-controller</url>
+  <developer id="org.linuxrising">
+    <name>linuxrising.org contributors</name>
+  </developer>
+  <launchable type="desktop-id">org.linuxrising.ElgatoLight.desktop</launchable>
+  <categories>
+    <category>Settings</category>
+    <category>Utility</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-03-23"/>
+  </releases>
+</component>
