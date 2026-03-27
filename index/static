@@ -275,7 +275,7 @@
       "Name": "projectbluefin/testhub/monkey-bubble",
       "Images": [
         {
-          "Digest": "sha256:1a84f728840d47cdec3064550b7580c685e35af63f32ae70bfb952f1bcd74cbb",
+          "Digest": "sha256:6f1f6073fc0ded97df21a8458db9093d423e902ceae39638c3c7311de12e7a13",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
