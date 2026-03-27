@@ -250,6 +250,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/redhat-planet",
+      "Images": [
+        {
+          "Digest": "sha256:58c7fc2b6a477f292fe6e3b5b94040e4395f62785eea68f17fccc2e2c26631d5",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/com.redhat.RedHatPlanet/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=com.redhat.RedHatPlanet\nruntime=org.kde.Platform/x86_64/6.10\nsdk=org.kde.Sdk/x86_64/6.10\ncommand=redhatplanet\n\n[Context]\nshared=network;\nsockets=wayland;\ndevices=dri;\nfilesystems=xdg-config/kdeglobals:ro;\n\n[Session Bus Policy]\ncom.canonical.AppMenu.Registrar=talk\norg.kde.kconfig.notify=talk\norg.kde.KGlobalSettings=talk\n\n[Extension com.redhat.RedHatPlanet.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.redhat.RedHatPlanet.Debug;",
+            "org.flatpak.installed-size": "9970176",
+            "org.flatpak.download-size": "8643671"
+          }
+        }
+      ]
     }
   ]
 }
