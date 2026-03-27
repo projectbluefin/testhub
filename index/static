@@ -270,6 +270,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/monkey-bubble",
+      "Images": [
+        {
+          "Digest": "sha256:1a84f728840d47cdec3064550b7580c685e35af63f32ae70bfb952f1bcd74cbb",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/io.gitlab.cschalle.monkey-bubble/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=io.gitlab.cschalle.monkey-bubble\nruntime=org.gnome.Platform/x86_64/47\nsdk=org.gnome.Sdk/x86_64/47\ncommand=monkey-bubble\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;fallback-x11;\ndevices=dri;input;\n\n[System Bus Policy]\norg.freedesktop.Avahi=talk\n\n[Extension io.gitlab.cschalle.monkey_bubble.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension io.gitlab.cschalle.monkey_bubble.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=io.gitlab.cschalle.monkey_bubble.Locale;io.gitlab.cschalle.monkey_bubble.Debug;",
+            "org.flatpak.installed-size": "9110528",
+            "org.flatpak.download-size": "5153405"
+          }
+        }
+      ]
     }
   ]
 }
