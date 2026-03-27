@@ -290,6 +290,41 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/wmdock",
+      "Images": [
+        {
+          "Digest": "sha256:dfeae08feaaee8070287784740446235e39ca50435a36dff8a41035b8f64e22a",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "arm64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/org.wmakerdock.Config/aarch64/stable",
+            "org.flatpak.metadata": "[Application]\nname=org.wmakerdock.Config\nruntime=org.gnome.Platform/aarch64/49\nsdk=org.gnome.Sdk/aarch64/49\ncommand=wmakerdock-config\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\nfilesystems=xdg-run/dconf;xdg-config/dconf;\n\n[Session Bus Policy]\nca.desrt.dconf=talk\n\n[Extension org.wmakerdock.Config.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.wmakerdock.Config.Debug;",
+            "org.flatpak.installed-size": "105984",
+            "org.flatpak.download-size": "33984"
+          }
+        },
+        {
+          "Digest": "sha256:60a21cb60971ab6b813dfd5cde450a89a3489b5ac1397eb776d7473f934f28ee",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/org.wmakerdock.Config/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=org.wmakerdock.Config\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=wmakerdock-config\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\nfilesystems=xdg-run/dconf;xdg-config/dconf;\n\n[Session Bus Policy]\nca.desrt.dconf=talk\n\n[Extension org.wmakerdock.Config.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.wmakerdock.Config.Debug;",
+            "org.flatpak.installed-size": "89600",
+            "org.flatpak.download-size": "35115"
+          }
+        }
+      ]
     }
   ]
 }
