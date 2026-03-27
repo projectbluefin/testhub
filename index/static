@@ -230,6 +230,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/dell-webcam-control",
+      "Images": [
+        {
+          "Digest": "sha256:993c9953fa15ab4bc3d74b80e69b0804c76ba1ea21347d6daa68fb2695219b88",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/io.gitlab.cschalle.DellWebcamControl/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=io.gitlab.cschalle.DellWebcamControl\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=dell-wb7022-control\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=all;\n\n[Session Bus Policy]\norg.freedesktop.portal.Desktop=talk\n\n[Extension io.gitlab.cschalle.DellWebcamControl.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=io.gitlab.cschalle.DellWebcamControl.Debug;",
+            "org.flatpak.installed-size": "169472",
+            "org.flatpak.download-size": "72571"
+          }
+        }
+      ]
     }
   ]
 }
