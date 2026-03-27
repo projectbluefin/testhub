@@ -210,6 +210,26 @@
           }
         }
       ]
+    },
+    {
+      "Name": "projectbluefin/testhub/xmms-resuscitated",
+      "Images": [
+        {
+          "Digest": "sha256:7839440709067fd517737e9563cfadb074b4b0a61f1446fad81a26295444b5b9",
+          "MediaType": "application/vnd.oci.image.manifest.v1+json",
+          "OS": "linux",
+          "Architecture": "amd64",
+          "Tags": [
+            "latest"
+          ],
+          "Labels": {
+            "org.flatpak.ref": "app/org.xmms.Resuscitated/x86_64/stable",
+            "org.flatpak.metadata": "[Application]\nname=org.xmms.Resuscitated\nruntime=org.gnome.Platform/x86_64/48\nsdk=org.gnome.Sdk/x86_64/48\ncommand=xmms\n\n[Context]\nshared=ipc;network;\nsockets=fallback-x11;pulseaudio;wayland;\nfilesystems=xdg-download:ro;xdg-music:ro;\n\n[Session Bus Policy]\norg.mpris.MediaPlayer2.xmms_resuscitated=own\norg.freedesktop.FileManager1=talk\n\n[Extension org.xmms.Resuscitated.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.xmms.Resuscitated.Debug;",
+            "org.flatpak.installed-size": "1237504",
+            "org.flatpak.download-size": "602716"
+          }
+        }
+      ]
     }
   ]
 }
