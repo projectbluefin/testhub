@@ -215,7 +215,7 @@
       "Name": "projectbluefin/testhub/xmms-resuscitated",
       "Images": [
         {
-          "Digest": "sha256:7839440709067fd517737e9563cfadb074b4b0a61f1446fad81a26295444b5b9",
+          "Digest": "sha256:b5a51c42301a87bc2a6022f1c92345a7204e0dd6f7050b6e31062024a09c9d30",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
