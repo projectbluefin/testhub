@@ -330,7 +330,7 @@
       "Name": "projectbluefin/testhub/elgato-light",
       "Images": [
         {
-          "Digest": "sha256:b842836050e93c771d8cd0307ae9ca0db9e220a4dd17d4c0dd7bb8d41e1140dd",
+          "Digest": "sha256:5134d61fed6212791ba2af146c4036b44e73397cf1f0ea8cf5bf82dbda74040e",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -341,11 +341,11 @@
             "org.flatpak.ref": "app/org.linuxrising.ElgatoLight/aarch64/stable",
             "org.flatpak.metadata": "[Application]\nname=org.linuxrising.ElgatoLight\nruntime=org.gnome.Platform/aarch64/49\nsdk=org.gnome.Sdk/aarch64/49\ncommand=elgato-light-preferences\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;fallback-x11;\nfilesystems=xdg-run/dconf;xdg-config/dconf;\n\n[Session Bus Policy]\nca.desrt.dconf=talk\n\n[System Bus Policy]\norg.freedesktop.Avahi=talk\n",
             "org.flatpak.installed-size": "1098752",
-            "org.flatpak.download-size": "832804"
+            "org.flatpak.download-size": "832805"
           }
         },
         {
-          "Digest": "sha256:ba4a956eefe1097c72eeee5180d5a288ffd5621708e7b98475cf52bc9ff7f39b",
+          "Digest": "sha256:abb6ee21bd2dd8092fe8a7ff560bfd575cfd93998752f589a4d1eb79f0b58ea5",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -356,7 +356,7 @@
             "org.flatpak.ref": "app/org.linuxrising.ElgatoLight/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=org.linuxrising.ElgatoLight\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=elgato-light-preferences\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;fallback-x11;\nfilesystems=xdg-run/dconf;xdg-config/dconf;\n\n[Session Bus Policy]\nca.desrt.dconf=talk\n\n[System Bus Policy]\norg.freedesktop.Avahi=talk\n",
             "org.flatpak.installed-size": "1098752",
-            "org.flatpak.download-size": "832800"
+            "org.flatpak.download-size": "832804"
           }
         }
       ]
