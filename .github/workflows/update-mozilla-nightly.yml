@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Restore cached ETags
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: /tmp/nightly-etags
           key: mozilla-nightly-etags-${{ github.run_id }}
@@ -78,7 +78,7 @@ jobs:
           sed -i "/url:.*thunderbird-150.0a1.en-US.linux-x86_64.tar.xz/{n;s/sha256:.*/sha256: $NEW/}" flatpaks/thunderbird-nightly/manifest.yaml
 
       - name: Save ETags to cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         if: always()
         with:
           path: /tmp/nightly-etags
