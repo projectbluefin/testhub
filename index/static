@@ -100,7 +100,7 @@
       "Name": "projectbluefin/testhub/virtualbox",
       "Images": [
         {
-          "Digest": "sha256:0e32256f302a3f4b1afdc550249d4096eac26538be06cec9ab18679aca012f3b",
+          "Digest": "sha256:2c3ddf6a3cbb2e8c39e97d5ed6b1fe08fd00744a032cc561f1f77feca2336473",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -111,7 +111,7 @@
             "org.flatpak.ref": "app/org.virtualbox.VirtualBox/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=org.virtualbox.VirtualBox\nruntime=org.kde.Platform/x86_64/6.10\nsdk=org.kde.Sdk/x86_64/6.10\ncommand=VirtualBox\n\n[Context]\nshared=network;ipc;\nsockets=x11;pulseaudio;\ndevices=all;\nfilesystems=xdg-config/kdeglobals:ro;\npersistent=VirtualBox VMs;\n\n[Session Bus Policy]\ncom.canonical.AppMenu.Registrar=talk\norg.kde.kconfig.notify=talk\norg.kde.KGlobalSettings=talk\n\n[Extension org.virtualbox.VirtualBox.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension org.virtualbox.VirtualBox.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.virtualbox.VirtualBox.Locale;org.virtualbox.VirtualBox.Debug;",
             "org.flatpak.installed-size": "206743552",
-            "org.flatpak.download-size": "65761639"
+            "org.flatpak.download-size": "65761609"
           }
         }
       ]
