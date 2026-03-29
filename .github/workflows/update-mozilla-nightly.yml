@@ -19,70 +19,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Restore cached ETags
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
-        with:
-          path: /tmp/nightly-etags
-          key: mozilla-nightly-etags-${{ github.run_id }}
-          restore-keys: mozilla-nightly-etags-
-
-      - name: Check ETags and download if changed
-        id: check
+      - name: Download latest Mozilla nightly tarballs
         run: |
-          mkdir -p /tmp/nightly-etags
-
           FF_X86_URL="https://ftp.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox-150.0a1.en-US.linux-x86_64.tar.xz"
           FF_ARM_URL="https://ftp.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox-150.0a1.en-US.linux-aarch64.tar.xz"
           # Use ftp.mozilla.org (not CDN) — CDN caused HTTP/2 stream errors (exit code 92).
           TB_X86_URL="https://ftp.mozilla.org/pub/thunderbird/nightly/latest-comm-central/thunderbird-150.0a1.en-US.linux-x86_64.tar.xz"
 
-          check_and_download() {
-            local name="$1" url="$2" etag_file="/tmp/nightly-etags/${1}.etag"
-            local new_etag old_etag
-            new_etag=$(curl -sI "$url" | grep -i '^etag:' | tr -d '\r' | awk '{print $2}')
-            old_etag=$(cat "$etag_file" 2>/dev/null || echo "")
-            if [ "$new_etag" = "$old_etag" ] && [ -n "$new_etag" ]; then
-              echo "$name: ETag unchanged ($new_etag), skipping download"
-              echo "changed_${name}=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "$name: ETag changed ($old_etag -> $new_etag), downloading..."
-              if ! curl -fsSL --retry 3 --retry-delay 5 --output "/tmp/${name}.tar.xz" "$url"; then
-                echo "$name: Download failed (non-2xx response), aborting." >&2
-                exit 1
-              fi
-              echo "$new_etag" > "$etag_file"
-              echo "changed_${name}=true" >> "$GITHUB_OUTPUT"
+          download() {
+            local name="$1" url="$2"
+            echo "$name: downloading latest nightly tarball"
+            if ! curl -fsSL --retry 3 --retry-delay 5 --output "/tmp/${name}.tar.xz" "$url"; then
+              echo "$name: Download failed (non-2xx response), aborting." >&2
+              exit 1
             fi
           }
 
-          check_and_download ff_x86  "$FF_X86_URL"
-          check_and_download ff_arm  "$FF_ARM_URL"
-          check_and_download tb_x86  "$TB_X86_URL"
+          download ff_x86 "$FF_X86_URL"
+          download ff_arm "$FF_ARM_URL"
+          download tb_x86 "$TB_X86_URL"
 
       - name: Update firefox-nightly x86_64 sha256
-        if: steps.check.outputs.changed_ff_x86 == 'true'
         run: |
           NEW=$(sha256sum /tmp/ff_x86.tar.xz | cut -d' ' -f1)
           sed -i "/url:.*firefox-150.0a1.en-US.linux-x86_64.tar.xz/{n;s/sha256:.*/sha256: $NEW/}" flatpaks/firefox-nightly/manifest.yaml
 
       - name: Update firefox-nightly aarch64 sha256
-        if: steps.check.outputs.changed_ff_arm == 'true'
         run: |
           NEW=$(sha256sum /tmp/ff_arm.tar.xz | cut -d' ' -f1)
           sed -i "/url:.*firefox-150.0a1.en-US.linux-aarch64.tar.xz/{n;s/sha256:.*/sha256: $NEW/}" flatpaks/firefox-nightly/manifest.yaml
 
       - name: Update thunderbird-nightly x86_64 sha256
-        if: steps.check.outputs.changed_tb_x86 == 'true'
         run: |
           NEW=$(sha256sum /tmp/tb_x86.tar.xz | cut -d' ' -f1)
           sed -i "/url:.*thunderbird-150.0a1.en-US.linux-x86_64.tar.xz/{n;s/sha256:.*/sha256: $NEW/}" flatpaks/thunderbird-nightly/manifest.yaml
-
-      - name: Save ETags to cache
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
-        if: always()
-        with:
-          path: /tmp/nightly-etags
-          key: mozilla-nightly-etags-${{ github.run_id }}
 
       - name: Commit and push sha256 updates to main
         env:
@@ -92,7 +62,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if git diff --quiet; then
-            echo "No sha256 changes, nothing to commit."
+            echo "No sha256 changes; dispatching targeted nightly builds anyway."
+            gh workflow run build.yml --ref main -f app=firefox-nightly
+            gh workflow run build.yml --ref main -f app=thunderbird-nightly
             exit 0
           fi
 
@@ -102,5 +74,6 @@ jobs:
           git push origin main
 
           # GITHUB_TOKEN pushes do not trigger on:push in other workflows.
-          # Explicitly dispatch build.yml so the updated sha256s are built immediately.
-          gh workflow run build.yml --ref main
+          # Explicitly dispatch targeted app builds after pushing checksum updates.
+          gh workflow run build.yml --ref main -f app=firefox-nightly
+          gh workflow run build.yml --ref main -f app=thunderbird-nightly
