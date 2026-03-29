@@ -25,7 +25,7 @@
       "Name": "projectbluefin/testhub/thunderbird-nightly",
       "Images": [
         {
-          "Digest": "sha256:392777c0890dcfb48648490d2e73e6ffa9aa89af8a383b334f799f0c70d0308f",
+          "Digest": "sha256:9aea28498725b647f5622177f4fec13fe0090118e0474779a23307cb9cd43521",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -35,8 +35,8 @@
           "Labels": {
             "org.flatpak.ref": "app/org.mozilla.thunderbird.nightly/x86_64/nightly",
             "org.flatpak.metadata": "[Application]\nname=org.mozilla.thunderbird.nightly\nruntime=org.freedesktop.Platform/x86_64/24.08\nsdk=org.freedesktop.Sdk/x86_64/24.08\ncommand=thunderbird\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;fallback-x11;pcsc;cups;\ndevices=dri;\nfilesystems=xdg-download;xdg-run/speech-dispatcher:ro;\npersistent=.thunderbird-nightly;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\norg.mozilla.thunderbird.nightly.*=own\norg.gtk.vfs.*=talk\norg.freedesktop.secrets=talk\norg.a11y.Bus=talk\norg.freedesktop.FileManager1=talk\n\n[System Bus Policy]\norg.freedesktop.NetworkManager=talk\n\n[Environment]\nDICPATH=/usr/share/hunspell\n\n[Extension org.freedesktop.Platform.ffmpeg-full]\ndirectory=lib/ffmpeg\nadd-ld-path=.\nversion=24.08\n\n[Extension org.mozilla.thunderbird.nightly.Locale]\ndirectory=share/runtime/langpack\nno-autodownload=true\nsubdirectories=true\nversion=nightly\n\n[Extension org.mozilla.thunderbird.nightly.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.mozilla.thunderbird.nightly.Debug;",
-            "org.flatpak.installed-size": "327227392",
-            "org.flatpak.download-size": "118261841"
+            "org.flatpak.installed-size": "327262720",
+            "org.flatpak.download-size": "118268562"
           }
         }
       ]
