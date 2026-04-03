@@ -5,7 +5,7 @@
       "Name": "projectbluefin/testhub/goose",
       "Images": [
         {
-          "Digest": "sha256:186f5db9a59e4a2259e59431e325ab5095758e7a922af1808cb69b755b90973b",
+          "Digest": "sha256:a830383b194954c1de26e06aa5e88b4045c26d765e03e68e60f0989c366581c0",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -25,7 +25,7 @@
       "Name": "projectbluefin/testhub/thunderbird-nightly",
       "Images": [
         {
-          "Digest": "sha256:336cfb1979babe3000565e94b90896c1cbc9120a0e33ca57363a06941651dcaf",
+          "Digest": "sha256:c5d8532f53ce870bed5041182a5fda5aae0b29e94e8185c6c2e42b0a3153c8d0",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -45,7 +45,7 @@
       "Name": "projectbluefin/testhub/lmstudio",
       "Images": [
         {
-          "Digest": "sha256:13be138fb5a83713ac8e203c711423b90b78c9dbf86ab244026fc205084371b8",
+          "Digest": "sha256:c2d0ef36b6624556785370b58bc0492aa70afcdff62e09decb6587e24c835fba",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -56,7 +56,7 @@
             "org.flatpak.ref": "app/ai.lmstudio.LMStudio/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=ai.lmstudio.LMStudio\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=lm-studio\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=all;\nfilesystems=home;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\norg.freedesktop.portal.Desktop=talk\n\n[Extension ai.lmstudio.LMStudio.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=ai.lmstudio.LMStudio.Debug;",
             "org.flatpak.installed-size": "2220566016",
-            "org.flatpak.download-size": "1052787932"
+            "org.flatpak.download-size": "1052787966"
           }
         }
       ]
@@ -65,7 +65,7 @@
       "Name": "projectbluefin/testhub/ghostty",
       "Images": [
         {
-          "Digest": "sha256:21144ec321d81260c5292058dffe537785dbaad2bfe18d3f08fb57f97894ce0c",
+          "Digest": "sha256:548665402c9f95de3b5cc0cd9dd0314c179d6a98f8f72faa14b4634c7d44fbf4",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -80,7 +80,7 @@
           }
         },
         {
-          "Digest": "sha256:b15668bda083526b293916a0990c0a53e581ffb77be2d45f2ce243d51a2fdf90",
+          "Digest": "sha256:d1a065534f60c198f855ac2b779097cdcb55bec502a2326177fcf07851537928",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -120,7 +120,7 @@
       "Name": "projectbluefin/testhub/firefox-nightly",
       "Images": [
         {
-          "Digest": "sha256:773c696cecf4d3f20bb8e077f4a2da642437146ef89f9186cbe460ce35a806a9",
+          "Digest": "sha256:8ffd03b96545b8c2eec29ccef41cbb4835d051be7bf29214bada19a251032dda",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -131,11 +131,11 @@
             "org.flatpak.ref": "app/org.mozilla.firefox.nightly/aarch64/nightly",
             "org.flatpak.metadata": "[Application]\nname=org.mozilla.firefox.nightly\nruntime=org.freedesktop.Platform/aarch64/24.08\nsdk=org.freedesktop.Sdk/aarch64/24.08\nbase=app/org.mozilla.firefox.BaseApp/aarch64/24.08\ncommand=firefox\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;fallback-x11;pcsc;cups;\ndevices=all;\nfeatures=devel;\nfilesystems=xdg-config/gtk-3.0:ro;xdg-download;/run/.heim_org.h5l.kcm-socket;xdg-run/speech-dispatcher:ro;\npersistent=.mozilla;\n\n[Session Bus Policy]\norg.mozilla.firefox_beta.*=own\norg.mozilla.firefox.*=own\norg.mpris.MediaPlayer2.firefox.*=talk\norg.gtk.vfs.*=talk\norg.a11y.Bus=talk\norg.freedesktop.FileManager1=talk\n\n[System Bus Policy]\norg.freedesktop.NetworkManager=talk\n\n[Environment]\nDICPATH=/usr/share/hunspell\n\n[Extension org.freedesktop.Platform.ffmpeg-full]\ndirectory=lib/ffmpeg\nadd-ld-path=.\nversion=24.08\n\n[Extension org.mozilla.firefox.Locale]\ndirectory=share/runtime/langpack\nno-autodownload=true\nsubdirectories=true\nversion=nightly\n\n[Extension org.mozilla.firefox.systemconfig]\ndirectory=etc/firefox\nno-autodownload=true\nversion=nightly\n\n[Extension org.mozilla.firefox.nightly.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension org.mozilla.firefox.nightly.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.mozilla.firefox.nightly.Locale;org.mozilla.firefox.nightly.Debug;",
             "org.flatpak.installed-size": "298235392",
-            "org.flatpak.download-size": "111480441"
+            "org.flatpak.download-size": "111480464"
           }
         },
         {
-          "Digest": "sha256:d5656162a2645c83ff9a9de6d803d38135742a225eb976b8d9a336d1a637410d",
+          "Digest": "sha256:7dd4d8fbea7fd319c9bcda768932ef5c3e45df8f15d15c71252f0210f102e132",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
