@@ -5,7 +5,7 @@
       "Name": "projectbluefin/testhub/goose",
       "Images": [
         {
-          "Digest": "sha256:2348e2707aec3fcdbfecfb44f20db8e66ccca240617fd678115e8e688eb8260c",
+          "Digest": "sha256:186f5db9a59e4a2259e59431e325ab5095758e7a922af1808cb69b755b90973b",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -15,8 +15,8 @@
           "Labels": {
             "org.flatpak.ref": "app/io.github.block.Goose/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=io.github.block.Goose\nruntime=org.freedesktop.Platform/x86_64/25.08\nsdk=org.freedesktop.Sdk/x86_64/25.08\nbase=app/org.electronjs.Electron2.BaseApp/x86_64/25.08\ncommand=electron-wrapper\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;session-bus;system-bus;\ndevices=dri;\nfilesystems=home;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\n\n[Environment]\nLD_LIBRARY_PATH=/app/lib\n\n[Extension io.github.block.Goose.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension io.github.block.Goose.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=io.github.block.Goose.Locale;io.github.block.Goose.Debug;",
-            "org.flatpak.installed-size": "566021120",
-            "org.flatpak.download-size": "199233250"
+            "org.flatpak.installed-size": "585360384",
+            "org.flatpak.download-size": "204838878"
           }
         }
       ]
@@ -25,7 +25,7 @@
       "Name": "projectbluefin/testhub/thunderbird-nightly",
       "Images": [
         {
-          "Digest": "sha256:9aea28498725b647f5622177f4fec13fe0090118e0474779a23307cb9cd43521",
+          "Digest": "sha256:336cfb1979babe3000565e94b90896c1cbc9120a0e33ca57363a06941651dcaf",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -36,7 +36,7 @@
             "org.flatpak.ref": "app/org.mozilla.thunderbird.nightly/x86_64/nightly",
             "org.flatpak.metadata": "[Application]\nname=org.mozilla.thunderbird.nightly\nruntime=org.freedesktop.Platform/x86_64/24.08\nsdk=org.freedesktop.Sdk/x86_64/24.08\ncommand=thunderbird\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;fallback-x11;pcsc;cups;\ndevices=dri;\nfilesystems=xdg-download;xdg-run/speech-dispatcher:ro;\npersistent=.thunderbird-nightly;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\norg.mozilla.thunderbird.nightly.*=own\norg.gtk.vfs.*=talk\norg.freedesktop.secrets=talk\norg.a11y.Bus=talk\norg.freedesktop.FileManager1=talk\n\n[System Bus Policy]\norg.freedesktop.NetworkManager=talk\n\n[Environment]\nDICPATH=/usr/share/hunspell\n\n[Extension org.freedesktop.Platform.ffmpeg-full]\ndirectory=lib/ffmpeg\nadd-ld-path=.\nversion=24.08\n\n[Extension org.mozilla.thunderbird.nightly.Locale]\ndirectory=share/runtime/langpack\nno-autodownload=true\nsubdirectories=true\nversion=nightly\n\n[Extension org.mozilla.thunderbird.nightly.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.mozilla.thunderbird.nightly.Debug;",
             "org.flatpak.installed-size": "327262720",
-            "org.flatpak.download-size": "118268562"
+            "org.flatpak.download-size": "118268601"
           }
         }
       ]
@@ -45,7 +45,7 @@
       "Name": "projectbluefin/testhub/lmstudio",
       "Images": [
         {
-          "Digest": "sha256:1fc76fe1b0040a66058ff0a79e73feb25b42ff866a190db95f5b95eae909a6c9",
+          "Digest": "sha256:13be138fb5a83713ac8e203c711423b90b78c9dbf86ab244026fc205084371b8",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -55,8 +55,8 @@
           "Labels": {
             "org.flatpak.ref": "app/ai.lmstudio.LMStudio/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=ai.lmstudio.LMStudio\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=lm-studio\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=all;\nfilesystems=home;\n\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\norg.freedesktop.portal.Desktop=talk\n\n[Extension ai.lmstudio.LMStudio.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=ai.lmstudio.LMStudio.Debug;",
-            "org.flatpak.installed-size": "2182049280",
-            "org.flatpak.download-size": "1037250329"
+            "org.flatpak.installed-size": "2220566016",
+            "org.flatpak.download-size": "1052787932"
           }
         }
       ]
@@ -65,7 +65,7 @@
       "Name": "projectbluefin/testhub/ghostty",
       "Images": [
         {
-          "Digest": "sha256:98eedb31db0ecca4957338572f54b0208bce3f945333d854e14e3a71a0ad5f8e",
+          "Digest": "sha256:21144ec321d81260c5292058dffe537785dbaad2bfe18d3f08fb57f97894ce0c",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -75,12 +75,12 @@
           "Labels": {
             "org.flatpak.ref": "app/com.mitchellh.ghostty/aarch64/stable",
             "org.flatpak.metadata": "[Application]\nname=com.mitchellh.ghostty\nruntime=org.gnome.Platform/aarch64/49\nsdk=org.gnome.Sdk/aarch64/49\ncommand=ghostty\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=dri;all;\nfilesystems=home:ro;\n\n[Session Bus Policy]\norg.freedesktop.Flatpak=talk\n\n[Extension com.mitchellh.ghostty.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension com.mitchellh.ghostty.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.mitchellh.ghostty.Locale;com.mitchellh.ghostty.Debug;",
-            "org.flatpak.installed-size": "30592512",
-            "org.flatpak.download-size": "18736636"
+            "org.flatpak.installed-size": "30609408",
+            "org.flatpak.download-size": "18741984"
           }
         },
         {
-          "Digest": "sha256:ccae9f20fe4e6e55d842d193b4850ae2b0cce4baa6cfd67a654d7b3e5783dc47",
+          "Digest": "sha256:b15668bda083526b293916a0990c0a53e581ffb77be2d45f2ce243d51a2fdf90",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -90,8 +90,8 @@
           "Labels": {
             "org.flatpak.ref": "app/com.mitchellh.ghostty/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=com.mitchellh.ghostty\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=ghostty\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=dri;all;\nfilesystems=home:ro;\n\n[Session Bus Policy]\norg.freedesktop.Flatpak=talk\n\n[Extension com.mitchellh.ghostty.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension com.mitchellh.ghostty.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=com.mitchellh.ghostty.Locale;com.mitchellh.ghostty.Debug;",
-            "org.flatpak.installed-size": "32001024",
-            "org.flatpak.download-size": "19198795"
+            "org.flatpak.installed-size": "32018432",
+            "org.flatpak.download-size": "19202531"
           }
         }
       ]
@@ -120,7 +120,7 @@
       "Name": "projectbluefin/testhub/firefox-nightly",
       "Images": [
         {
-          "Digest": "sha256:6d3416dff0fc28e73d0a0a517d0e5e1a99ba33e8d9ad9f6e0dc848824a1b84ce",
+          "Digest": "sha256:773c696cecf4d3f20bb8e077f4a2da642437146ef89f9186cbe460ce35a806a9",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -131,11 +131,11 @@
             "org.flatpak.ref": "app/org.mozilla.firefox.nightly/aarch64/nightly",
             "org.flatpak.metadata": "[Application]\nname=org.mozilla.firefox.nightly\nruntime=org.freedesktop.Platform/aarch64/24.08\nsdk=org.freedesktop.Sdk/aarch64/24.08\nbase=app/org.mozilla.firefox.BaseApp/aarch64/24.08\ncommand=firefox\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;fallback-x11;pcsc;cups;\ndevices=all;\nfeatures=devel;\nfilesystems=xdg-config/gtk-3.0:ro;xdg-download;/run/.heim_org.h5l.kcm-socket;xdg-run/speech-dispatcher:ro;\npersistent=.mozilla;\n\n[Session Bus Policy]\norg.mozilla.firefox_beta.*=own\norg.mozilla.firefox.*=own\norg.mpris.MediaPlayer2.firefox.*=talk\norg.gtk.vfs.*=talk\norg.a11y.Bus=talk\norg.freedesktop.FileManager1=talk\n\n[System Bus Policy]\norg.freedesktop.NetworkManager=talk\n\n[Environment]\nDICPATH=/usr/share/hunspell\n\n[Extension org.freedesktop.Platform.ffmpeg-full]\ndirectory=lib/ffmpeg\nadd-ld-path=.\nversion=24.08\n\n[Extension org.mozilla.firefox.Locale]\ndirectory=share/runtime/langpack\nno-autodownload=true\nsubdirectories=true\nversion=nightly\n\n[Extension org.mozilla.firefox.systemconfig]\ndirectory=etc/firefox\nno-autodownload=true\nversion=nightly\n\n[Extension org.mozilla.firefox.nightly.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension org.mozilla.firefox.nightly.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=org.mozilla.firefox.nightly.Locale;org.mozilla.firefox.nightly.Debug;",
             "org.flatpak.installed-size": "298235392",
-            "org.flatpak.download-size": "111480467"
+            "org.flatpak.download-size": "111480441"
           }
         },
         {
-          "Digest": "sha256:4441903d56839aa02e0f8f6d9f0dbbee94854b669bf56feadcfa2e318faa942f",
+          "Digest": "sha256:d5656162a2645c83ff9a9de6d803d38135742a225eb976b8d9a336d1a637410d",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
