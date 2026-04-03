@@ -3,7 +3,7 @@ runtime: org.gnome.Platform
 runtime-version: "49"
 sdk: org.gnome.Sdk
 default-branch: stable
-x-version: "0.4.7"
+x-version: "0.4.9"
 # x-arches: upstream only ships x64 installer; no arm64 available
 x-arches: [x86_64]
 x-chunkah-max-layers: "24"
@@ -32,9 +32,9 @@ modules:
     buildsystem: simple
     build-commands:
       # Extract deb archive
-      - ar x LM-Studio-0.4.7-2-x64.deb
+      - ar x LM-Studio-0.4.9-1-x64.deb
       - tar xf data.tar.xz
-      # Copy app files — renamed from "opt/LM Studio/" (space) to "opt/LM-Studio/" (hyphen) in 0.4.7
+      # Copy app files
       - cp -a "opt/LM-Studio/." /app/lm-studio/
       # Icon omitted: deb ships 1024x1024 PNG; flatpak-builder rejects >512x512 at export.
       # convert (ImageMagick) not in gnome-49; GdkPixbuf fails (glycin sandbox); resize tool TBD.
@@ -52,9 +52,9 @@ modules:
       - install -Dm644 ai.lmstudio.LMStudio.metainfo.xml /app/share/metainfo/ai.lmstudio.LMStudio.metainfo.xml
     sources:
       - type: file
-        url: https://installers.lmstudio.ai/linux/x64/0.4.7-2/LM-Studio-0.4.7-2-x64.deb
-        sha256: eab2447932560cb4c889cfabdd680932222e9bc1059306159c155f338f051013
-        dest-filename: LM-Studio-0.4.7-2-x64.deb
+        url: https://installers.lmstudio.ai/linux/x64/0.4.9-1/LM-Studio-0.4.9-1-x64.deb
+        sha256: 836b69a51cbe2d92230603856f1840e08fa698e629a7cca402e1fb0769a09682
+        dest-filename: LM-Studio-0.4.9-1-x64.deb
 
       - type: file
         path: ai.lmstudio.LMStudio.metainfo.xml

@@ -3,7 +3,7 @@ runtime: org.gnome.Platform
 runtime-version: "49"
 sdk: org.gnome.Sdk
 default-branch: stable
-x-version: "1.3.0"
+x-version: "1.3.1"
 x-chunkah-max-layers: "8"
 x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
 command: ghostty
@@ -51,8 +51,8 @@ modules:
       - install -Dm644 com.mitchellh.ghostty.metainfo.xml /app/share/metainfo/com.mitchellh.ghostty.metainfo.xml
     sources:
       - type: archive
-        url: https://github.com/ghostty-org/ghostty/archive/refs/tags/v1.3.0.tar.gz
-        sha256: 3d05cbdb712ec19ecdc720a2757a09ebf79aaa8d90ae2ae5c0ddd5536ef31be6
+        url: https://github.com/ghostty-org/ghostty/archive/refs/tags/v1.3.1.tar.gz
+        sha256: 265837d3026b433f0e6b4e49d43153b915b0a19513f7edd8a8e693c559bd415b
         strip-components: 1
 
       - zig-packages.json
