@@ -152,6 +152,35 @@
     },
     {
       "customType": "regex",
+      "description": "Update OpenScreen manifest x-version from GitHub releases",
+      "managerFilePatterns": [
+        "/^flatpaks/io\\.github\\.siddharthvaddem\\.Openscreen/manifest\\.yaml$/"
+      ],
+      "matchStrings": [
+        "x-version:\\s*[\"']?(?<currentValue>[^\"'\\n]+)[\"']?"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "siddharthvaddem/openscreen",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "autoReplaceStringTemplate": "x-version: \"{{{newValue}}}\""
+    },
+    {
+      "customType": "regex",
+      "description": "Update OpenScreen manifest release URL version and sha256",
+      "managerFilePatterns": [
+        "/^flatpaks/io\\.github\\.siddharthvaddem\\.Openscreen/manifest\\.yaml$/"
+      ],
+      "matchStrings": [
+        "\\s*url:\\s*(?<urlPrefix>https://github\\.com/(?<depName>siddharthvaddem/openscreen)/releases/download/v)(?<currentValue>[^/\\n]+)/(?<urlSuffix>Openscreen-Linux-latest\\.AppImage)\\n\\s*sha256:\\s*(?<currentDigest>[0-9a-f]{64})"
+      ],
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "autoReplaceStringTemplate": "        url: {{{urlPrefix}}}{{{newValue}}}/{{{urlSuffix}}}\n        sha256: {{{newDigest}}}"
+    },
+    {
+      "customType": "regex",
       "description": "Update chunkah container image tag in Justfile and build.yml",
       "managerFilePatterns": [
         "/^Justfile$/",
