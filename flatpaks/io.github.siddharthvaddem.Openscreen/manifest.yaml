@@ -9,7 +9,6 @@ x-version: "1.3.0"
 # upstream only ships x86_64 Linux AppImage; verified v1.3.0 release assets — no aarch64 build
 x-arches: [x86_64]
 x-chunkah-max-layers: "24"      # 213 MB Electron app; default 16 is too low
-x-skip-install-test: true       # Build 1 bootstrap: not yet in testhub index — REMOVE before merge
 x-skip-launch-check: true       # GUI Electron app: exits 1 in headless CI (no display)
 separate-locales: false          # Electron apps don't follow Flatpak locale patterns
 command: openscreen
