@@ -5,4 +5,5 @@ Exec=openscreen %U
 Icon=io.github.siddharthvaddem.Openscreen
 Type=Application
 Categories=AudioVideo;Video;
+StartupNotify=true
 StartupWMClass=Openscreen
