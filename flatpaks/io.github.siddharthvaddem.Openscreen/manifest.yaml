@@ -19,8 +19,8 @@ finish-args:
   - --socket=fallback-x11
   - --socket=wayland
   - --socket=pulseaudio         # Microphone/audio capture
-  - --socket=pipewire           # PipeWire video stream after ScreenCast portal authorizes
   # Screen recording via xdg-desktop-portal (PipeWire ScreenCast on Wayland)
+  # Note: --socket=pipewire requires Flatpak >=1.15; portal.Desktop covers PipeWire stream
   - --talk-name=org.freedesktop.portal.Desktop
   - --talk-name=org.freedesktop.Notifications
   # Save recordings to XDG paths
