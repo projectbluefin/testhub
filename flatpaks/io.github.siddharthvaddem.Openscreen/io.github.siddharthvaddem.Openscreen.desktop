@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Openscreen
+Comment=Free and open-source screen recording app
+Exec=openscreen %U
+Icon=io.github.siddharthvaddem.Openscreen
+Type=Application
+Categories=AudioVideo;Video;
+StartupWMClass=Openscreen
