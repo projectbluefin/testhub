@@ -1,0 +1,68 @@
+app-id: io.github.siddharthvaddem.Openscreen
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: "24.08"
+default-branch: stable
+x-version: "1.3.0"
+x-arches: [x86_64]              # upstream only ships x86_64 Linux AppImage; no aarch64 available
+x-chunkah-max-layers: "24"      # 213 MB Electron app; default 16 is too low
+x-skip-install-test: true       # Build 1 bootstrap: not yet in testhub index — REMOVE before merge
+x-skip-launch-check: true       # GUI Electron app: exits 1 in headless CI (no display)
+separate-locales: false          # Electron apps don't follow Flatpak locale patterns
+command: openscreen
+finish-args:
+  - --device=dri                # GPU access for rendering
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio         # Microphone/audio capture
+  # Screen recording via xdg-desktop-portal (PipeWire ScreenCast on Wayland)
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.Notifications
+  # Save recordings to XDG paths
+  - --filesystem=xdg-videos
+  - --filesystem=xdg-pictures
+modules:
+  - name: openscreen
+    buildsystem: simple
+    only-arches: [x86_64]
+    build-commands:
+      # Extract AppImage — no FUSE required; --appimage-extract decompresses squashfs to disk
+      - chmod +x Openscreen-Linux-latest.AppImage
+      - ./Openscreen-Linux-latest.AppImage --appimage-extract
+      # Install app into named subdirectory
+      - mv squashfs-root "${FLATPAK_DEST}/openscreen"
+      # Install 512x512 icon (upstream PNG — no resize needed)
+      - install -Dm644 io.github.siddharthvaddem.Openscreen.512x512.png
+          "${FLATPAK_DEST}/share/icons/hicolor/512x512/apps/io.github.siddharthvaddem.Openscreen.png"
+      # Install desktop file (provided as source — proper Flatpak app-id from the start)
+      - install -Dm644 io.github.siddharthvaddem.Openscreen.desktop
+          "${FLATPAK_DEST}/share/applications/io.github.siddharthvaddem.Openscreen.desktop"
+      # Install metainfo
+      - install -Dm644 io.github.siddharthvaddem.Openscreen.metainfo.xml
+          "${FLATPAK_DEST}/share/metainfo/io.github.siddharthvaddem.Openscreen.metainfo.xml"
+      # Install zypak wrapper (zypak provided by Electron2.BaseApp — proper Flatpak sandbox)
+      - install -Dm755 openscreen "${FLATPAK_DEST}/bin/openscreen"
+    sources:
+      - type: file
+        url: https://github.com/siddharthvaddem/openscreen/releases/download/v1.3.0/Openscreen-Linux-latest.AppImage
+        sha256: e7ce92a2d86d65baf60c900ea7fa6f025eb849cb9d75e5732007047bc98e9821
+        dest-filename: Openscreen-Linux-latest.AppImage
+
+      # zypak wrapper — replaces --no-sandbox; translates Electron sandbox calls to bubblewrap
+      - type: script
+        dest-filename: openscreen
+        commands:
+          - exec zypak-wrapper /app/openscreen/openscreen "$@"
+
+      - type: file
+        path: io.github.siddharthvaddem.Openscreen.metainfo.xml
+
+      - type: file
+        path: io.github.siddharthvaddem.Openscreen.desktop
+
+      - type: file
+        path: io.github.siddharthvaddem.Openscreen.512x512.png
