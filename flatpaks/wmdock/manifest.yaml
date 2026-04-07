@@ -5,7 +5,6 @@ sdk: org.gnome.Sdk
 default-branch: stable
 x-version: "0.1.15"
 x-skip-launch-check: true  # GUI app: requires Wayland/X11 display; exits 1 in headless CI
-x-skip-install-test: true  # Build 1 bootstrap: not yet in testhub index; remove after first successful CI push
 x-skip-chunkah: true
 command: wmakerdock-config
 finish-args:
