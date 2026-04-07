@@ -28,5 +28,4 @@ default-branch: stable
 x-arches:
 - x86_64
 x-skip-chunkah: true
-x-skip-install-test: true
 x-skip-launch-check: true
