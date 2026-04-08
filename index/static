@@ -175,7 +175,7 @@
       "Name": "projectbluefin/testhub/io.github.denysmb.kontainer",
       "Images": [
         {
-          "Digest": "sha256:ed302c9a372e9ee7b8e2a1de9d32d2ac58b98762ec49bbcb223389b1005d2b4c",
+          "Digest": "sha256:fc6a5e0c86f0a886ea75440b6096e407e4d459651ba673520d74ac7d8a7c6cff",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -186,7 +186,7 @@
             "org.flatpak.ref": "app/io.github.DenysMb.Kontainer/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=io.github.DenysMb.Kontainer\nruntime=org.kde.Platform/x86_64/6.10\nsdk=org.kde.Sdk/x86_64/6.10\ncommand=kontainer\n\n[Context]\nshared=ipc;\nsockets=x11;wayland;fallback-x11;\ndevices=dri;\nfilesystems=xdg-config/kdeglobals:ro;~/.local/share/icons/distrobox:ro;~/.local/share/applications:ro;\n\n[Session Bus Policy]\ncom.canonical.AppMenu.Registrar=talk\norg.kde.kconfig.notify=talk\norg.kde.KGlobalSettings=talk\norg.freedesktop.Flatpak=talk\n\n[Extension io.github.DenysMb.Kontainer.Locale]\ndirectory=share/runtime/locale\nautodelete=true\nlocale-subset=true\n\n[Extension io.github.DenysMb.Kontainer.Debug]\ndirectory=lib/debug\nautodelete=true\nno-autodownload=true\n\n[Build]\nbuilt-extensions=io.github.DenysMb.Kontainer.Locale;io.github.DenysMb.Kontainer.Debug;",
             "org.flatpak.installed-size": "624640",
-            "org.flatpak.download-size": "201821"
+            "org.flatpak.download-size": "201845"
           }
         }
       ]
