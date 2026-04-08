@@ -330,7 +330,7 @@
       "Name": "projectbluefin/testhub/elgato-light",
       "Images": [
         {
-          "Digest": "sha256:4be0175be077b9b87c052c687a2cbff33ffcea85f217e81c3d4cea4fd6e0eea3",
+          "Digest": "sha256:a7a09be4d3d11c9bd32b058eb18143fe80fc91aa95e0b9304bc895feb65177f7",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "arm64",
@@ -345,7 +345,7 @@
           }
         },
         {
-          "Digest": "sha256:c5590dd4df440d917272274fc3cea284eda0b45123d22729850e213a9d44e9f7",
+          "Digest": "sha256:10dc511f20e431c6cf1da6dc258ee73c221941581341870586d464991e58bacf",
           "MediaType": "application/vnd.oci.image.manifest.v1+json",
           "OS": "linux",
           "Architecture": "amd64",
@@ -356,7 +356,7 @@
             "org.flatpak.ref": "app/org.linuxrising.ElgatoLight/x86_64/stable",
             "org.flatpak.metadata": "[Application]\nname=org.linuxrising.ElgatoLight\nruntime=org.gnome.Platform/x86_64/49\nsdk=org.gnome.Sdk/x86_64/49\ncommand=elgato-light-preferences\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;fallback-x11;\nfilesystems=xdg-run/dconf;xdg-config/dconf;\n\n[Session Bus Policy]\nca.desrt.dconf=talk\n\n[System Bus Policy]\norg.freedesktop.Avahi=talk\n",
             "org.flatpak.installed-size": "1098752",
-            "org.flatpak.download-size": "832798"
+            "org.flatpak.download-size": "832800"
           }
         }
       ]
