@@ -100,7 +100,7 @@ jobs:
           - arch: aarch64
             runner: ubuntu-24.04-arm
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:6842ca6515512eb02a90dcf80d24192323bef6babf6dc6248812854eaff644c8 # flatpak-builder from freedesktopsdk/sdk:25.08 (updated 2026-04-03)
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:ad62ca60218381d24f497224f5f91e05c7e97244fca12795ee0ef08e85c0ffbb # flatpak-builder from freedesktopsdk/sdk:25.08 (updated 2026-04-03)
       options: --privileged
     # SOURCE_DATE_EPOCH=0: normalises tar timestamps so OCI blob hashes are deterministic
     # across identical-content builds. build-bundle reads this env directly.
