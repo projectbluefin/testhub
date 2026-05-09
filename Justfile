@@ -19,7 +19,7 @@ chunkah_image := "quay.io/jlebon/chunkah:v0.3.0"
 install-tools-yq:
     #!/usr/bin/env bash
     set -euo pipefail
-    YQ_VERSION="v4.52.4"
+    YQ_VERSION="v4.53.2"
     if command -v yq >/dev/null 2>&1 && yq --version 2>&1 | grep -q "$YQ_VERSION"; then
         echo "yq $YQ_VERSION already installed"
         exit 0
