@@ -57,7 +57,7 @@ install-tools-podman:
 install-tools-oras:
     #!/usr/bin/env bash
     set -euo pipefail
-    ORAS_VERSION="1.3.1"
+    ORAS_VERSION="1.3.2"
     if command -v oras >/dev/null 2>&1 && oras version 2>&1 | grep -q "$ORAS_VERSION"; then
         echo "oras $ORAS_VERSION already installed"
         exit 0
